@@ -17,7 +17,7 @@ endif()
 option(XMLPARSER_BUILD_TESTS "Build XMLParser tests"
        ${XMLPARSER_DEFAULT_BUILD_TESTS})
 
-add_library(xmlparser src/xmlparser.cpp src/parser_core.cpp)
+add_library(xmlparser src/xmlparser.cpp src/parser_core.cpp src/dom.cpp)
 add_library(xmlparser::xmlparser ALIAS xmlparser)
 
 set_target_properties(
@@ -93,6 +93,11 @@ if(XMLPARSER_BUILD_TESTS)
     tests/req/error_location_exception_tests.cpp
     tests/req/error_malformed_input_tests.cpp
     tests/req/error_recoverable_callback_tests.cpp
+    tests/req/dom_attribute_access_tests.cpp
+    tests/req/dom_model_tests.cpp
+    tests/req/dom_mutation_tests.cpp
+    tests/req/dom_serialization_tests.cpp
+    tests/req/dom_traversal_tests.cpp
     tests/req/sax_callback_registration_tests.cpp
     tests/req/sax_event_coverage_tests.cpp
     tests/req/sax_incremental_tests.cpp

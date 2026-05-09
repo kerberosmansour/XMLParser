@@ -2,10 +2,10 @@
 
 #include "parser_core.h"
 
-#include <ostream>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace xmlparser::v1 {
 namespace {
@@ -14,19 +14,9 @@ constexpr SourceLocation start_location() noexcept {
   return SourceLocation{};
 }
 
-XmlParseException empty_input_error() {
-  return XmlParseException(ErrorKind::EmptyInput, start_location(),
-                           "XML input is empty");
-}
-
 XmlParseException unsupported_parser_error() {
   return XmlParseException(ErrorKind::Unsupported, start_location(),
                            "incremental XML parsing is not implemented until milestone M3");
-}
-
-XmlParseException unsupported_serializer_error() {
-  return XmlParseException(ErrorKind::Unsupported, start_location(),
-                           "XML serialization is not implemented until milestone M4");
 }
 
 }  // namespace
@@ -56,11 +46,88 @@ SourceLocation XmlValidityException::location() const noexcept {
   return location_;
 }
 
+namespace {
+
+class DomBuilder final : public SaxHandler {
+ public:
+  explicit DomBuilder(const ParserOptions& options) : options_(options) {}
+
+  void start_element(const QualifiedName& name,
+                     const std::vector<AttributeView>& attributes) override {
+    ensure_node_available();
+    Element& element =
+        document.create_element(name.qualified_name, name.uri, name.local_name);
+    for (const auto& attribute : attributes) {
+      element.set_attribute_ns(attribute.name.uri, attribute.name.local_name,
+                               attribute.name.qualified_name,
+                               std::string(attribute.value));
+    }
+    append_to_current_parent(element);
+    element_stack_.push_back(&element);
+  }
+
+  void end_element(const QualifiedName&) override {
+    if (!element_stack_.empty()) {
+      element_stack_.pop_back();
+    }
+  }
+
+  void characters(std::string_view text) override {
+    ensure_node_available();
+    Text& node = document.create_text(std::string(text));
+    append_to_current_parent(node);
+  }
+
+  void processing_instruction(std::string_view target,
+                              std::string_view data) override {
+    ensure_node_available();
+    ProcessingInstruction& node =
+        document.create_processing_instruction(std::string(target), std::string(data));
+    append_to_current_parent(node);
+  }
+
+  void comment(std::string_view text) override {
+    ensure_node_available();
+    Comment& node = document.create_comment(std::string(text));
+    append_to_current_parent(node);
+  }
+
+  void cdata(std::string_view text) override {
+    ensure_node_available();
+    CDataSection& node = document.create_cdata_section(std::string(text));
+    append_to_current_parent(node);
+  }
+
+  Document document;
+
+ private:
+  void ensure_node_available() {
+    if (node_count_ + 1 > options_.max_dom_nodes) {
+      throw XmlParseException(ErrorKind::ResourceLimit, SourceLocation{},
+                              "DOM node count exceeds max_dom_nodes");
+    }
+    ++node_count_;
+  }
+
+  void append_to_current_parent(Node& node) {
+    if (element_stack_.empty()) {
+      document.append_child(node);
+    } else {
+      element_stack_.back()->append_child(node);
+    }
+  }
+
+  const ParserOptions& options_;
+  std::size_t node_count_ = 0;
+  std::vector<Element*> element_stack_;
+};
+
+}  // namespace
+
 Document parse(std::string_view xml, const ParserOptions& options) {
-  class NullHandler : public SaxHandler {};
-  NullHandler handler;
-  detail::parse_xml_document(xml, handler, options);
-  return Document{};
+  DomBuilder builder(options);
+  detail::parse_xml_document(xml, builder, options);
+  return std::move(builder.document);
 }
 
 void parse(std::string_view xml, SaxHandler& handler, const ParserOptions& options) {
@@ -161,14 +228,6 @@ void SaxParser::finish() {
 
 const ParserOptions& SaxParser::options() const noexcept {
   return options_;
-}
-
-std::string serialize(const Document&, const SerializeOptions&) {
-  throw unsupported_serializer_error();
-}
-
-void serialize(const Document&, std::ostream&, const SerializeOptions&) {
-  throw unsupported_serializer_error();
 }
 
 }  // namespace xmlparser::v1

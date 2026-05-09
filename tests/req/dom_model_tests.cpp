@@ -41,3 +41,16 @@ TEST_CASE("REQ_DOM_01_preserves_node_type_identity_after_parse",
   REQUIRE(root->children()[1]->type() == xmlparser::v1::NodeType::Text);
   REQUIRE(root->children()[2]->type() == xmlparser::v1::NodeType::CDataSection);
 }
+
+TEST_CASE("REQ_DOM_01_enforces_configured_dom_node_limit",
+          "[req][bdd][m4][REQ-DOM-01][REQ-ERR-05]") {
+  xmlparser::v1::ParserOptions options;
+  options.max_dom_nodes = 1;
+
+  try {
+    (void)xmlparser::v1::parse("<root><child/></root>", options);
+    FAIL("DOM node limit was not enforced");
+  } catch (const xmlparser::v1::XmlParseException& error) {
+    REQUIRE(error.kind() == xmlparser::v1::ErrorKind::ResourceLimit);
+  }
+}

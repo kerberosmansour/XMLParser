@@ -24,3 +24,17 @@ TEST_CASE("REQ_DOM_05_get_attribute_ns_distinguishes_same_local_name_different_u
   REQUIRE(root->get_attribute_ns("urn:b", "code") == "2");
   REQUIRE(root->get_attribute_ns("", "code").empty());
 }
+
+TEST_CASE("REQ_DOM_05_set_attribute_ns_keeps_expanded_names_unique",
+          "[req][bdd][m4][REQ-DOM-05]") {
+  xmlparser::v1::Document document;
+  auto& root = document.create_element("p:root", "urn:p", "root");
+
+  root.set_attribute_ns("urn:p", "code", "p:code", "1");
+  root.set_attribute_ns("urn:p", "code", "p:code", "2");
+  root.set_attribute_ns("urn:q", "code", "q:code", "3");
+
+  REQUIRE(root.attributes().size() == 2);
+  REQUIRE(root.get_attribute_ns("urn:p", "code") == "2");
+  REQUIRE(root.get_attribute_ns("urn:q", "code") == "3");
+}
