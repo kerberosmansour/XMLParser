@@ -411,6 +411,16 @@ class Parser {
     throw_parse(ErrorKind::Validity, source_location, std::move(message));
   }
 
+  void recoverable_validity_error(SourceLocation source_location,
+                                  std::string message) const {
+    if (!options_.recoverable_error_handler) {
+      throw_parse(ErrorKind::Validity, source_location, std::move(message));
+    }
+    const XmlParseException error(ErrorKind::Validity, source_location,
+                                  std::move(message));
+    options_.recoverable_error_handler(error);
+  }
+
   bool starts_with(std::u32string_view text) const {
     if (index_ + text.size() > document_.chars.size()) {
       return false;
@@ -831,11 +841,13 @@ class Parser {
       return;
     }
     if (validation_stack_.empty() && frame.name != dtd_.root_name) {
-      validity_error(source_location, "document element does not match DOCTYPE");
+      recoverable_validity_error(source_location,
+                                 "document element does not match DOCTYPE");
     }
     const auto declaration = dtd_.elements.find(frame.name);
     if (declaration == dtd_.elements.end()) {
-      validity_error(source_location, "element has no DTD declaration");
+      recoverable_validity_error(source_location, "element has no DTD declaration");
+      return;
     }
 
     switch (declaration->second.kind) {
@@ -843,18 +855,20 @@ class Parser {
         return;
       case ElementModelKind::Empty:
         if (!frame.child_elements.empty() || frame.has_non_whitespace_text) {
-          validity_error(source_location, "EMPTY element has content");
+          recoverable_validity_error(source_location, "EMPTY element has content");
         }
         return;
       case ElementModelKind::Pcdata:
         if (!frame.child_elements.empty()) {
-          validity_error(source_location, "PCDATA element has child elements");
+          recoverable_validity_error(source_location,
+                                     "PCDATA element has child elements");
         }
         return;
       case ElementModelKind::Children:
         if (frame.child_elements != declaration->second.children ||
             frame.has_non_whitespace_text) {
-          validity_error(source_location, "element children do not match DTD model");
+          recoverable_validity_error(source_location,
+                                     "element children do not match DTD model");
         }
         return;
     }

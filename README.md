@@ -95,6 +95,20 @@ while malformed XML remains a well-formedness error. External DTD resolution is
 disabled by default; callers must explicitly set `allow_external_dtd` and
 provide `external_dtd_resolver`. XML Schema/XSD is outside the v1 scope.
 
+Callers that want to log or suppress non-fatal DTD validity failures can set
+`recoverable_error_handler`. If the handler returns, parsing continues; if no
+handler is set, parsing stops with the validity error, and handler exceptions
+propagate unchanged.
+
+```cpp
+xmlparser::v1::ParserOptions options;
+options.validation = xmlparser::v1::ValidationMode::Dtd;
+options.recoverable_error_handler =
+    [](const xmlparser::v1::XmlParseException& error) {
+      // log error.what(), error.kind(), and error.location()
+    };
+```
+
 ## DOM And Serialization
 
 ```cpp
