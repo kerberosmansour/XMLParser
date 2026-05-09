@@ -29,6 +29,15 @@ std::string quote(const fs::path& path) {
 #endif
 }
 
+std::string quote_command(const fs::path& path) {
+#ifdef _WIN32
+  // cmd.exe needs an extra leading quote when the executable path is quoted and has args.
+  return "\"" + quote(path);
+#else
+  return quote(path);
+#endif
+}
+
 std::string read_file(const fs::path& path) {
   std::ifstream input(path);
   REQUIRE(input.is_open());
@@ -46,7 +55,7 @@ void run_command(const std::string& command) {
 
 TEST_CASE("REQ_PLAT_04_default_link_has_no_non_std_runtime_dependency",
           "[e2e][req][m5][REQ-PLAT-04]") {
-  run_command(quote(fs::path(CMAKE_COMMAND)) +
+  run_command(quote_command(fs::path(CMAKE_COMMAND)) +
               " -DXMLPARSER_SOURCE_DIR=" + quote(XMLPARSER_SOURCE_DIR) +
               " -P " +
               quote(fs::path(XMLPARSER_SOURCE_DIR) /
@@ -85,7 +94,7 @@ TEST_CASE("REQ_PLAT_01_ci_matrix_windows_msvc_v142",
 
 TEST_CASE("REQ_API_04_parser_core_line_coverage_is_at_least_90_percent",
           "[coverage][m5][REQ-API-04]") {
-  run_command(quote(fs::path(CMAKE_COMMAND)) +
+  run_command(quote_command(fs::path(CMAKE_COMMAND)) +
               " -DXMLPARSER_SOURCE_DIR=" + quote(XMLPARSER_SOURCE_DIR) +
               " -DXMLPARSER_BINARY_DIR=" + quote(XMLPARSER_BINARY_DIR) +
               " -P " +

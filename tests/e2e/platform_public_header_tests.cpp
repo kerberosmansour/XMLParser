@@ -41,6 +41,15 @@ std::string quote(const fs::path& path) {
 #endif
 }
 
+std::string quote_command(const fs::path& path) {
+#ifdef _WIN32
+  // cmd.exe needs an extra leading quote when the executable path is quoted and has args.
+  return "\"" + quote(path);
+#else
+  return quote(path);
+#endif
+}
+
 void write_file(const fs::path& path, const std::string& contents) {
   fs::create_directories(path.parent_path());
   std::ofstream output(path);
@@ -89,9 +98,9 @@ TEST_CASE("REQ_PLAT_02_public_headers_compile_as_cxx17",
              "  return options.max_external_subset_bytes > 0 ? 0 : 1;\n"
              "}\n");
 
-  run_command(quote(fs::path(CMAKE_COMMAND)) + " -S " + quote(source_dir) + " -B " +
+  run_command(quote_command(fs::path(CMAKE_COMMAND)) + " -S " + quote(source_dir) + " -B " +
               quote(build_dir));
-  run_command(quote(fs::path(CMAKE_COMMAND)) + " --build " + quote(build_dir));
+  run_command(quote_command(fs::path(CMAKE_COMMAND)) + " --build " + quote(build_dir));
 }
 
 TEST_CASE("REQ_PLAT_06_public_api_uses_fixed_width_or_standard_size_types_intentionally",
