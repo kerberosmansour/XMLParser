@@ -82,6 +82,24 @@ fs::path built_executable(const fs::path& build_dir, const std::string& name) {
   return single_config;
 }
 
+void stage_runtime_dlls(const fs::path& install_prefix, const fs::path& executable) {
+#ifdef _WIN32
+  const fs::path bin_dir = install_prefix / "bin";
+  if (!fs::exists(bin_dir)) {
+    return;
+  }
+  for (const auto& entry : fs::directory_iterator(bin_dir)) {
+    if (entry.path().extension() == ".dll") {
+      fs::copy_file(entry.path(), executable.parent_path() / entry.path().filename(),
+                    fs::copy_options::overwrite_existing);
+    }
+  }
+#else
+  (void)install_prefix;
+  (void)executable;
+#endif
+}
+
 }  // namespace
 
 SCENARIO("M1 public header compiles as CXX17", "[e2e][m1][REQ-API-01]") {
@@ -157,6 +175,7 @@ SCENARIO("M1 install tree consumer can find package", "[e2e][m1][REQ-PLAT-03]") 
       THEN("it links xmlparser::xmlparser and runs a minimal program") {
         const fs::path executable = built_executable(consumer_build, "consumer");
         REQUIRE(fs::exists(executable));
+        stage_runtime_dlls(install_prefix, executable);
         run_command(quote(executable));
       }
     }

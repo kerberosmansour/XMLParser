@@ -124,6 +124,16 @@ if(XMLPARSER_BUILD_TESTS)
             CMAKE_COMMAND="${CMAKE_COMMAND}"
             CMAKE_EXECUTABLE_SUFFIX="${CMAKE_EXECUTABLE_SUFFIX}")
 
+  if(WIN32 AND BUILD_SHARED_LIBS)
+    add_custom_command(
+      TARGET xmlparser_tests
+      POST_BUILD
+      COMMAND
+        ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:xmlparser>
+        $<TARGET_FILE:Catch2::Catch2> $<TARGET_FILE:Catch2::Catch2WithMain>
+        $<TARGET_FILE_DIR:xmlparser_tests>)
+  endif()
+
   add_test(NAME xmlparser_bdd COMMAND xmlparser_tests "[bdd]")
   set_tests_properties(xmlparser_bdd PROPERTIES LABELS "bdd")
 
