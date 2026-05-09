@@ -1048,7 +1048,7 @@ The required test files above must include at least these concrete cases. Add mo
 | REQ-SAX-05 | `REQ_SAX_05_element_events_include_uri_local_and_qname`; `REQ_SAX_05_attribute_events_include_uri_local_and_qname` |
 | REQ-ERR-01 | `REQ_ERR_01_reports_well_formedness_error_kind`; `REQ_ERR_01_reports_dtd_validity_error_kind`; `REQ_ERR_01_does_not_confuse_validity_with_parse_failure` |
 | REQ-ERR-02 | `REQ_ERR_02_exception_contains_message_line_column_and_byte_offset`; `REQ_ERR_02_location_tracks_utf16_input_offsets` |
-| REQ-ERR-03 | `REQ_ERR_03_recoverable_callback_observes_validity_error`; `REQ_ERR_03_non_recoverable_well_formedness_error_stops_parse` |
+| REQ-ERR-03 | `REQ_ERR_03_recoverable_callback_observes_validity_error`; `REQ_ERR_03_recoverable_callback_throw_stops_parse`; `REQ_ERR_03_non_recoverable_well_formedness_error_stops_parse` |
 | REQ-ERR-04 | `REQ_ERR_04_validates_internal_dtd_subset`; `REQ_ERR_04_external_dtd_resolver_is_not_called_by_default`; `REQ_ERR_04_external_dtd_resolver_is_called_only_when_configured` |
 | REQ-ERR-05 | `REQ_ERR_05_callback_throw_does_not_leak`; `REQ_ERR_05_dom_mutation_throw_does_not_leak_or_corrupt_tree`; `REQ_ERR_05_sanitizers_pass_exception_paths` |
 | REQ-ERR-06 | `REQ_ERR_06_empty_input_returns_defined_error`; `REQ_ERR_06_null_equivalent_input_returns_defined_error`; `REQ_ERR_06_truncated_input_returns_defined_error`; `REQ_ERR_06_fuzz_corpus_has_no_ub_or_sanitizer_findings` |
@@ -1088,7 +1088,7 @@ The required test files above must include at least these concrete cases. Add mo
 | REQ-SAX-05 namespace event data | M3 | `tests/req/sax_namespace_event_tests.cpp` passes |
 | REQ-ERR-01 well-formedness vs validity | M5 | `tests/req/error_validation_distinction_tests.cpp` passes; approved decision on XML Schema scope exists |
 | REQ-ERR-02 typed parse exception location | M2 | `tests/req/error_location_exception_tests.cpp` passes |
-| REQ-ERR-03 recoverable SAX error callback | M3, M5 | `tests/req/error_recoverable_callback_tests.cpp` passes |
+| REQ-ERR-03 recoverable error callback | M3, M5 | `tests/req/error_recoverable_callback_tests.cpp` passes |
 | REQ-ERR-04 internal DTD and optional external DTD | M5 | `tests/req/error_dtd_validation_tests.cpp` passes |
 | REQ-ERR-05 exception safety / RAII | M2, M3, M4, M5 | `tests/req/error_exception_safety_tests.cpp` and sanitizer/leak checks pass |
 | REQ-ERR-06 malformed input no UB | M2-M5 | `tests/req/error_malformed_input_tests.cpp` and fuzz/sanitizer checks pass |

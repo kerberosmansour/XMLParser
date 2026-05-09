@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 
+#include <xmlparser/errors.h>
 #include <xmlparser/version.h>
 
 namespace xmlparser::v1 {
@@ -27,6 +28,7 @@ enum class NamespaceMode {
 };
 
 using ExternalDtdResolver = std::function<std::string(std::string_view system_id)>;
+using RecoverableErrorHandler = std::function<void(const XmlParseException& error)>;
 
 struct ParserOptions {
   XmlVersion version = XmlVersion::Xml10;
@@ -35,6 +37,7 @@ struct ParserOptions {
   NamespaceMode namespaces = NamespaceMode::Enabled;
   bool allow_external_dtd = false;
   ExternalDtdResolver external_dtd_resolver;
+  RecoverableErrorHandler recoverable_error_handler;
 
   std::size_t max_document_bytes = 16U * 1024U * 1024U;
   std::size_t max_depth = 256U;
