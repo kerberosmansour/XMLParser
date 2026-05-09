@@ -69,8 +69,7 @@ drives the existing public `SaxHandler` callbacks for document, element,
 character, processing-instruction, comment, and CDATA events.
 
 The implemented M2 path enforces configured document byte, element depth, token
-length, attribute count, and entity expansion limits. XML 1.1, DTD validation,
-and external resolver behavior remain planned components.
+length, attribute count, and entity expansion limits.
 
 Milestone 3 extends the same parser core with namespace scope resolution and a
 buffered incremental SAX facade. `SaxParser::feed` accumulates caller chunks up
@@ -89,6 +88,16 @@ single owning document per node, rejects cycles and cross-document insertion,
 and maintains parent/child/sibling relationships. The serializer walks the DOM,
 escapes text and attribute values, emits required namespace declarations for
 qualified names, and reports failed output streams through `XmlParseException`.
+
+Milestone 5 extends the shared parser core with XML 1.1 character-reference
+selection and an internal DTD subset parser for element declarations and general
+entities. Validation mode reports DTD validity failures as `ErrorKind::Validity`
+without reclassifying malformed XML. External DTD resolution remains disabled by
+default and, when explicitly enabled, calls only the caller-provided resolver
+with an external subset byte limit; the library does not fetch network or file
+resources itself. Release hardening adds static/shared package tests, a CI
+matrix declaration, W3C fixture provenance metadata, and a parser-core coverage
+gate.
 
 ## Data Flow Summary
 

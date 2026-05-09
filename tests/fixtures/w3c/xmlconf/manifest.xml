@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<xmlparser-fixture-manifest source="W3C XML Test Suite">
+  <metadata>
+    <source-url>https://www.w3.org/XML/Test/</source-url>
+    <license-url>https://www.w3.org/copyright/test-suites-licenses/</license-url>
+    <retrieved-date>2026-05-09</retrieved-date>
+    <redistribution>metadata-only curated manifest; no third-party fixture payload vendored in M5</redistribution>
+  </metadata>
+  <test id="W3C_XMLCONF_XML11_CHAR_REF" requirement="REQ-STD-02" type="curated">
+    <input>&lt;?xml version="1.1"?&gt;&lt;root&gt;&amp;#x1F;&lt;/root&gt;</input>
+    <expected>valid</expected>
+  </test>
+</xmlparser-fixture-manifest>

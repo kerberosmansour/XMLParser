@@ -59,3 +59,47 @@ TEST_CASE("REQ_STD_03_handles_namespace_11_undeclaration",
   REQUIRE(handler.events[2].name == "child");
   REQUIRE(handler.events[2].uri.empty());
 }
+
+TEST_CASE("REQ_STD_03_can_disable_namespace_processing",
+          "[req][bdd][m5][REQ-STD-03]") {
+  RecordingHandler handler;
+  xmlparser::v1::ParserOptions options;
+  options.namespaces = xmlparser::v1::NamespaceMode::Disabled;
+
+  xmlparser::v1::parse("<p:root xmlns:p=\"urn:p\" p:code=\"7\"/>", handler, options);
+
+  REQUIRE(handler.events[1].name == "p:root");
+  REQUIRE(handler.events[1].uri.empty());
+  REQUIRE(handler.events[1].attributes.size() == 2);
+}
+
+TEST_CASE("REQ_STD_03_rejects_invalid_namespace_qualified_name",
+          "[req][bdd][m5][REQ-STD-03]") {
+  try {
+    xmlparser::v1::parse("<a:b:c xmlns:a=\"urn:a\"/>");
+    FAIL("invalid namespace-qualified name was accepted");
+  } catch (const xmlparser::v1::XmlParseException& error) {
+    REQUIRE(error.kind() == xmlparser::v1::ErrorKind::WellFormedness);
+  }
+}
+
+TEST_CASE("REQ_STD_03_rejects_undeclared_namespace_prefix",
+          "[req][bdd][m5][REQ-STD-03]") {
+  try {
+    xmlparser::v1::parse("<p:root/>");
+    FAIL("undeclared namespace prefix was accepted");
+  } catch (const xmlparser::v1::XmlParseException& error) {
+    REQUIRE(error.kind() == xmlparser::v1::ErrorKind::WellFormedness);
+  }
+}
+
+TEST_CASE("REQ_STD_03_resolves_reserved_xml_prefix",
+          "[req][bdd][m5][REQ-STD-03]") {
+  RecordingHandler handler;
+
+  xmlparser::v1::parse("<root xml:lang=\"en\"/>", handler);
+
+  REQUIRE(handler.events[1].attributes.size() == 1);
+  REQUIRE(handler.events[1].attributes[0].uri ==
+          "http://www.w3.org/XML/1998/namespace");
+}

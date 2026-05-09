@@ -60,3 +60,51 @@ TEST_CASE("REQ_STD_05_resolves_predefined_and_character_entities",
   REQUIRE(handler.events[1].attributes[0].value == "\"A&B\"");
   REQUIRE(has_event(handler, "characters", "<AA>"));
 }
+
+TEST_CASE("REQ_STD_05_resolves_apos_predefined_entity",
+          "[req][bdd][m5][REQ-STD-05]") {
+  RecordingHandler handler;
+
+  xmlparser::v1::parse("<root>&apos;</root>", handler);
+
+  REQUIRE(has_event(handler, "characters", "'"));
+}
+
+TEST_CASE("REQ_STD_05_resolves_lowercase_hex_character_entity",
+          "[req][bdd][m5][REQ-STD-05]") {
+  RecordingHandler handler;
+
+  xmlparser::v1::parse("<root>&#x61;</root>", handler);
+
+  REQUIRE(has_event(handler, "characters", "a"));
+}
+
+TEST_CASE("REQ_STD_05_rejects_empty_character_reference",
+          "[req][bdd][m5][REQ-STD-05]") {
+  try {
+    xmlparser::v1::parse("<root>&#x;</root>");
+    FAIL("empty character reference was accepted");
+  } catch (const xmlparser::v1::XmlParseException& error) {
+    REQUIRE(error.kind() == xmlparser::v1::ErrorKind::WellFormedness);
+  }
+}
+
+TEST_CASE("REQ_STD_05_rejects_invalid_character_reference_digit",
+          "[req][bdd][m5][REQ-STD-05]") {
+  try {
+    xmlparser::v1::parse("<root>&#xZZ;</root>");
+    FAIL("invalid character reference digit was accepted");
+  } catch (const xmlparser::v1::XmlParseException& error) {
+    REQUIRE(error.kind() == xmlparser::v1::ErrorKind::WellFormedness);
+  }
+}
+
+TEST_CASE("REQ_STD_05_rejects_character_reference_overflow",
+          "[req][bdd][m5][REQ-STD-05]") {
+  try {
+    xmlparser::v1::parse("<root>&#999999999999999999999999999999;</root>");
+    FAIL("overflowing character reference was accepted");
+  } catch (const xmlparser::v1::XmlParseException& error) {
+    REQUIRE(error.kind() == xmlparser::v1::ErrorKind::WellFormedness);
+  }
+}

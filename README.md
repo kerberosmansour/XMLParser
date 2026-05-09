@@ -4,7 +4,8 @@ XMLParser is a C++17 XML parsing library under active SLO-driven
 development. The current milestone provides XML 1.0 well-formedness parsing,
 UTF-8/UTF-16 BOM handling, source-location diagnostics, namespace-aware SAX
 events, an incremental `feed` / `finish` API, a document-owned DOM, and DOM
-serialization. XML 1.1 and DTD validation land in later milestones.
+serialization. XML 1.1 selection, internal DTD validation, and an opt-in
+caller-provided external DTD resolver contract are covered by the release gate.
 
 ## Build
 
@@ -22,6 +23,7 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ctest --test-dir build --output-on-failure -L bdd
 ctest --test-dir build --output-on-failure -L e2e
+ctest --test-dir build --output-on-failure -L req
 ```
 
 Tests use Catch2 as a test-only dependency, pinned in `CMakeLists.txt`.
@@ -69,6 +71,29 @@ int main() {
 The one-shot parser accepts well-formed XML 1.0 and reports malformed input
 through `XmlParseException` with `ErrorKind`, line, column, and byte offset.
 Error messages omit raw XML payloads by default.
+
+## XML 1.1 And DTD Validation
+
+```cpp
+#include <xmlparser/xmlparser.h>
+
+int main() {
+  xmlparser::v1::ParserOptions options;
+  options.version = xmlparser::v1::XmlVersion::Xml11;
+  options.validation = xmlparser::v1::ValidationMode::Dtd;
+
+  (void)xmlparser::v1::parse(
+      "<?xml version=\"1.1\"?>"
+      "<!DOCTYPE root [<!ELEMENT root (#PCDATA)>]>"
+      "<root>&#x1F;</root>",
+      options);
+}
+```
+
+Internal DTD validation reports validity failures with `ErrorKind::Validity`
+while malformed XML remains a well-formedness error. External DTD resolution is
+disabled by default; callers must explicitly set `allow_external_dtd` and
+provide `external_dtd_resolver`. XML Schema/XSD is outside the v1 scope.
 
 ## DOM And Serialization
 
@@ -179,6 +204,7 @@ A failing Catch2 scenario can be launched under a debugger after building:
 ```sh
 lldb -- build/xmlparser_tests "[bdd]"
 lldb -- build/xmlparser_tests "[m4]"
+lldb -- build/xmlparser_tests "[m5]"
 ```
 
 Use `gdb --args build/xmlparser_tests "[bdd]"` on systems where `gdb` is the

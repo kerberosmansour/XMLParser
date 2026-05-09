@@ -35,13 +35,22 @@ future conformance fixtures.
 | `REQ-DOM-05` qualified-name and namespace-aware attribute access | `tests/req/dom_attribute_access_tests.cpp` | `REQ_DOM_05_get_attribute_namespace_unaware`; `REQ_DOM_05_get_attribute_ns_distinguishes_same_local_name_different_uri`; `REQ_DOM_05_set_attribute_ns_keeps_expanded_names_unique` |
 | `REQ-ERR-03` non-recoverable well-formedness errors stop parse before validity recovery exists | `tests/req/error_recoverable_callback_tests.cpp` | `REQ_ERR_03_non_recoverable_well_formedness_error_stops_parse` |
 | `REQ-ERR-05` DOM resource and mutation failures leave trees consistent | `tests/req/dom_model_tests.cpp`; `tests/req/dom_mutation_tests.cpp` | `REQ_DOM_01_enforces_configured_dom_node_limit`; `REQ_DOM_02_rejects_cycle_creating_insert`; `REQ_DOM_02_rolls_back_failed_mutation` |
+| `REQ-STD-02` XML 1.1 selectable | `tests/req/std_xml11_tests.cpp`; `tests/fixtures/w3c/xmlconf/manifest.xml` | `REQ_STD_02_selects_xml11_at_runtime`; `REQ_STD_02_distinguishes_xml10_and_xml11_character_rules`; `REQ_STD_02_runs_xml11_conformance_subset` |
+| `REQ-ERR-01` well-formedness vs DTD validity distinction | `tests/req/error_validation_distinction_tests.cpp` | `REQ_ERR_01_reports_well_formedness_error_kind`; `REQ_ERR_01_reports_dtd_validity_error_kind`; `REQ_ERR_01_does_not_confuse_validity_with_parse_failure` |
+| `REQ-ERR-04` internal DTD and external resolver contract | `tests/req/error_dtd_validation_tests.cpp` | `REQ_ERR_04_validates_internal_dtd_subset`; `REQ_ERR_04_external_dtd_resolver_is_not_called_by_default`; `REQ_ERR_04_external_dtd_resolver_is_called_only_when_configured` |
+| `REQ-PLAT-01` compiler/platform CI matrix declared | `.github/workflows/ci.yml`; `tests/e2e/platform_release_evidence_tests.cpp` | `REQ_PLAT_01_ci_matrix_linux_gcc11`; `REQ_PLAT_01_ci_matrix_linux_clang14`; `REQ_PLAT_01_ci_matrix_macos_apple_clang14`; `REQ_PLAT_01_ci_matrix_windows_msvc_v142` |
+| `REQ-PLAT-02` public headers compile as C++17 | `tests/e2e/platform_public_header_tests.cpp` | `REQ_PLAT_02_public_headers_compile_as_cxx17` |
+| `REQ-PLAT-03` installed package consumer | `tests/e2e/platform_cmake_consumer_tests.cpp`; `tests/e2e_m1_cmake_consumer.cpp` | `REQ_PLAT_03_find_package_imported_target_builds_consumer`; existing M1 install-tree consumer |
+| `REQ-PLAT-04` no mandatory runtime dependencies | `tests/e2e/platform_dependency_audit.cmake`; `tests/e2e/platform_release_evidence_tests.cpp` | `REQ_PLAT_04_default_link_has_no_non_std_runtime_dependency` |
+| `REQ-PLAT-05` static and shared builds | `tests/e2e/platform_cmake_consumer_tests.cpp` | `REQ_PLAT_05_builds_static_library`; `REQ_PLAT_05_builds_shared_library` |
+| `REQ-PLAT-06` standard public integer/size types | `tests/e2e/platform_public_header_tests.cpp` | `REQ_PLAT_06_public_api_uses_fixed_width_or_standard_size_types_intentionally` |
+| `REQ-API-04` parser-core coverage gate | `tests/coverage/parser_core_coverage.cmake`; `tests/e2e/platform_release_evidence_tests.cpp` | `REQ_API_04_parser_core_line_coverage_is_at_least_90_percent` |
 
 ## Future Coverage Hooks
 
-- `REQ-STD-*` expands again in M5 when XML 1.1 and conformance fixture
-  ingestion are implemented.
 - `REQ-SAX-*` expands again in M5 only if conformance fixtures reveal extra
   namespace/SAX cases.
 - `REQ-DOM-*` expands again in M5 only if release/conformance work reveals
   additional DOM round-trip cases.
-- `REQ-VALID-*` expands in M5 when DTD validation is implemented.
+- Full upstream W3C fixture import remains future work; M5 records provenance
+  and a curated data-only manifest.

@@ -89,10 +89,15 @@ if(XMLPARSER_BUILD_TESTS)
     xmlparser_tests
     tests/bdd_m1_public_api.cpp
     tests/e2e_m1_cmake_consumer.cpp
+    tests/e2e/platform_cmake_consumer_tests.cpp
+    tests/e2e/platform_public_header_tests.cpp
+    tests/e2e/platform_release_evidence_tests.cpp
     tests/req/error_exception_safety_tests.cpp
+    tests/req/error_dtd_validation_tests.cpp
     tests/req/error_location_exception_tests.cpp
     tests/req/error_malformed_input_tests.cpp
     tests/req/error_recoverable_callback_tests.cpp
+    tests/req/error_validation_distinction_tests.cpp
     tests/req/dom_attribute_access_tests.cpp
     tests/req/dom_model_tests.cpp
     tests/req/dom_mutation_tests.cpp
@@ -104,6 +109,7 @@ if(XMLPARSER_BUILD_TESTS)
     tests/req/sax_namespace_event_tests.cpp
     tests/req/sax_streaming_tests.cpp
     tests/req/std_encoding_tests.cpp
+    tests/req/std_xml11_tests.cpp
     tests/req/std_markup_constructs_tests.cpp
     tests/req/std_namespaces_tests.cpp
     tests/req/std_xml10_conformance_tests.cpp)

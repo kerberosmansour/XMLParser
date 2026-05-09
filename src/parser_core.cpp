@@ -29,6 +29,34 @@ struct RawAttribute {
   SourceLocation location;
 };
 
+enum class ElementModelKind {
+  Any,
+  Empty,
+  Pcdata,
+  Children,
+};
+
+struct ElementDeclaration {
+  ElementModelKind kind = ElementModelKind::Any;
+  std::vector<std::string> children;
+};
+
+struct DtdState {
+  bool has_doctype = false;
+  bool has_external_subset = false;
+  std::string root_name;
+  std::string external_system_id;
+  std::map<std::string, ElementDeclaration> elements;
+  std::map<std::string, std::string> entities;
+  std::size_t declaration_count = 0;
+};
+
+struct ValidationFrame {
+  std::string name;
+  std::vector<std::string> child_elements;
+  bool has_non_whitespace_text = false;
+};
+
 bool is_space(char32_t value) {
   return value == U' ' || value == U'\t' || value == U'\n' || value == U'\r';
 }
@@ -43,11 +71,24 @@ bool is_name_char(char32_t value) {
          value == U'-' || value == U'.';
 }
 
-bool is_valid_xml_char(char32_t value) {
+bool is_valid_xml10_char(char32_t value) {
   return value == U'\t' || value == U'\n' || value == U'\r' ||
          (value >= 0x20 && value <= 0xD7FF) ||
          (value >= 0xE000 && value <= 0xFFFD) ||
          (value >= 0x10000 && value <= 0x10FFFF);
+}
+
+bool is_valid_xml11_char(char32_t value) {
+  return (value >= 0x1 && value <= 0xD7FF) ||
+         (value >= 0xE000 && value <= 0xFFFD) ||
+         (value >= 0x10000 && value <= 0x10FFFF);
+}
+
+bool is_valid_xml_char(char32_t value, XmlVersion version) {
+  if (version == XmlVersion::Xml11) {
+    return is_valid_xml11_char(value);
+  }
+  return is_valid_xml10_char(value);
 }
 
 std::string to_ascii(std::u32string_view text) {
@@ -66,6 +107,38 @@ std::string lowercase_ascii(std::string value) {
     }
   }
   return value;
+}
+
+std::string strip_ascii_space(std::string value) {
+  value.erase(std::remove_if(value.begin(), value.end(),
+                             [](char ch) {
+                               return ch == ' ' || ch == '\t' || ch == '\n' ||
+                                      ch == '\r';
+                             }),
+              value.end());
+  return value;
+}
+
+std::vector<std::string> split_names(std::string_view text) {
+  std::vector<std::string> names;
+  std::string current;
+  for (char ch : text) {
+    if (ch == ',') {
+      if (!current.empty()) {
+        names.push_back(current);
+        current.clear();
+      }
+      continue;
+    }
+    if (ch == '?' || ch == '*' || ch == '+') {
+      continue;
+    }
+    current.push_back(ch);
+  }
+  if (!current.empty()) {
+    names.push_back(current);
+  }
+  return names;
 }
 
 void append_utf8(std::string& output, char32_t value) {
@@ -112,7 +185,9 @@ class LocationTracker {
   throw XmlParseException(kind, location, std::move(message));
 }
 
-DecodedDocument decode_utf8(std::string_view xml, std::size_t start_offset) {
+DecodedDocument decode_utf8(std::string_view xml,
+                            std::size_t start_offset,
+                            const ParserOptions& options) {
   DecodedDocument document;
   LocationTracker tracker;
   std::size_t offset = start_offset;
@@ -159,7 +234,7 @@ DecodedDocument decode_utf8(std::string_view xml, std::size_t start_offset) {
         (value >= 0xD800 && value <= 0xDFFF)) {
       throw_parse(ErrorKind::Encoding, location, "invalid UTF-8 scalar value");
     }
-    if (!is_valid_xml_char(value)) {
+    if (!is_valid_xml_char(value, options.version)) {
       throw_parse(ErrorKind::WellFormedness, location,
                   "invalid XML character");
     }
@@ -173,7 +248,9 @@ DecodedDocument decode_utf8(std::string_view xml, std::size_t start_offset) {
   return document;
 }
 
-DecodedDocument decode_utf16(std::string_view xml, bool little_endian) {
+DecodedDocument decode_utf16(std::string_view xml,
+                             bool little_endian,
+                             const ParserOptions& options) {
   DecodedDocument document;
   LocationTracker tracker;
   std::size_t offset = 2;
@@ -214,7 +291,7 @@ DecodedDocument decode_utf16(std::string_view xml, bool little_endian) {
                   "unexpected UTF-16 trailing surrogate");
     }
 
-    if (!is_valid_xml_char(value)) {
+    if (!is_valid_xml_char(value, options.version)) {
       throw_parse(ErrorKind::WellFormedness, location,
                   "invalid XML character");
     }
@@ -240,7 +317,7 @@ DecodedDocument decode_document(std::string_view xml, const ParserOptions& optio
       static_cast<unsigned char>(xml[0]) == 0xEF &&
       static_cast<unsigned char>(xml[1]) == 0xBB &&
       static_cast<unsigned char>(xml[2]) == 0xBF) {
-    DecodedDocument decoded = decode_utf8(xml, 3);
+    DecodedDocument decoded = decode_utf8(xml, 3, options);
     if (decoded.chars.empty()) {
       throw_parse(ErrorKind::EmptyInput, SourceLocation{1, 1, 3},
                   "XML input is empty");
@@ -250,7 +327,7 @@ DecodedDocument decode_document(std::string_view xml, const ParserOptions& optio
   if (xml.size() >= 2 &&
       static_cast<unsigned char>(xml[0]) == 0xFF &&
       static_cast<unsigned char>(xml[1]) == 0xFE) {
-    DecodedDocument decoded = decode_utf16(xml, true);
+    DecodedDocument decoded = decode_utf16(xml, true, options);
     if (decoded.chars.empty()) {
       throw_parse(ErrorKind::EmptyInput, SourceLocation{1, 1, 2},
                   "XML input is empty");
@@ -260,14 +337,14 @@ DecodedDocument decode_document(std::string_view xml, const ParserOptions& optio
   if (xml.size() >= 2 &&
       static_cast<unsigned char>(xml[0]) == 0xFE &&
       static_cast<unsigned char>(xml[1]) == 0xFF) {
-    DecodedDocument decoded = decode_utf16(xml, false);
+    DecodedDocument decoded = decode_utf16(xml, false, options);
     if (decoded.chars.empty()) {
       throw_parse(ErrorKind::EmptyInput, SourceLocation{1, 1, 2},
                   "XML input is empty");
     }
     return decoded;
   }
-  DecodedDocument decoded = decode_utf8(xml, 0);
+  DecodedDocument decoded = decode_utf8(xml, 0, options);
   if (decoded.chars.empty()) {
     throw_parse(ErrorKind::EmptyInput, SourceLocation{}, "XML input is empty");
   }
@@ -282,6 +359,8 @@ class Parser {
   void parse() {
     handler_.start_document();
     parse_xml_declaration_if_present();
+    skip_misc();
+    parse_doctype_if_present();
     skip_misc();
     parse_element();
     skip_misc();
@@ -325,6 +404,11 @@ class Parser {
                             SourceLocation source_location,
                             std::string message) const {
     throw_parse(kind, source_location, std::move(message));
+  }
+
+  [[noreturn]] void validity_error(SourceLocation source_location,
+                                   std::string message) const {
+    throw_parse(ErrorKind::Validity, source_location, std::move(message));
   }
 
   bool starts_with(std::u32string_view text) const {
@@ -407,10 +491,17 @@ class Parser {
       advance();
     }
     expect_sequence(U"?>", "XML declaration close");
+    const bool declares_xml10 = declaration.find("1.0") != std::string::npos;
+    const bool declares_xml11 = declaration.find("1.1") != std::string::npos;
     if (declaration.find("version") == std::string::npos ||
-        declaration.find("1.0") == std::string::npos) {
+        (!declares_xml10 && !declares_xml11)) {
       fail_at(ErrorKind::WellFormedness, start,
-              "XML declaration must declare version 1.0 in M2");
+              "XML declaration must declare version 1.0 or 1.1");
+    }
+    if ((declares_xml10 && options_.version != XmlVersion::Xml10) ||
+        (declares_xml11 && options_.version != XmlVersion::Xml11)) {
+      fail_at(ErrorKind::WellFormedness, start,
+              "XML declaration version does not match ParserOptions");
     }
   }
 
@@ -427,6 +518,230 @@ class Parser {
       advance();
     }
     return to_ascii(buffer);
+  }
+
+  std::string parse_quoted_literal() {
+    const char32_t quote = peek();
+    if (quote != U'\'' && quote != U'"') {
+      fail(ErrorKind::WellFormedness, "expected quoted literal");
+    }
+    advance();
+    std::string value;
+    while (!eof() && peek() != quote) {
+      append_utf8(value, peek());
+      advance();
+    }
+    expect(quote, "literal quote");
+    return value;
+  }
+
+  void parse_doctype_if_present() {
+    if (!starts_with(U"<!DOCTYPE")) {
+      return;
+    }
+
+    dtd_.has_doctype = true;
+    expect_sequence(U"<!DOCTYPE", "DOCTYPE declaration");
+    if (!is_space(peek())) {
+      fail(ErrorKind::WellFormedness, "DOCTYPE requires whitespace after keyword");
+    }
+    skip_whitespace();
+    dtd_.root_name = parse_name();
+    skip_whitespace();
+
+    if (starts_with(U"SYSTEM")) {
+      index_ += 6;
+      skip_whitespace();
+      dtd_.has_external_subset = true;
+      dtd_.external_system_id = parse_quoted_literal();
+      skip_whitespace();
+    } else if (starts_with(U"PUBLIC")) {
+      index_ += 6;
+      skip_whitespace();
+      (void)parse_quoted_literal();
+      skip_whitespace();
+      dtd_.has_external_subset = true;
+      dtd_.external_system_id = parse_quoted_literal();
+      skip_whitespace();
+    }
+
+    if (peek() == U'[') {
+      advance();
+      parse_internal_subset();
+      expect(U']', "DOCTYPE internal subset close");
+      skip_whitespace();
+    }
+
+    expect(U'>', "DOCTYPE close");
+    resolve_external_subset_if_needed();
+  }
+
+  void parse_internal_subset() {
+    while (!eof()) {
+      skip_whitespace();
+      if (peek() == U']') {
+        return;
+      }
+      if (starts_with(U"<!--")) {
+        parse_comment(nullptr);
+      } else if (starts_with(U"<!ELEMENT")) {
+        parse_element_declaration();
+      } else if (starts_with(U"<!ENTITY")) {
+        parse_entity_declaration();
+      } else {
+        fail(ErrorKind::WellFormedness, "unsupported DTD declaration");
+      }
+    }
+    fail(ErrorKind::WellFormedness, "truncated DOCTYPE internal subset");
+  }
+
+  void enforce_dtd_declaration_limit() {
+    ++dtd_.declaration_count;
+    if (dtd_.declaration_count > options_.max_dtd_declarations) {
+      fail(ErrorKind::ResourceLimit,
+           "DTD declaration count exceeds max_dtd_declarations");
+    }
+  }
+
+  void parse_element_declaration() {
+    const SourceLocation start = location();
+    enforce_dtd_declaration_limit();
+    expect_sequence(U"<!ELEMENT", "ELEMENT declaration");
+    if (!is_space(peek())) {
+      fail(ErrorKind::WellFormedness, "ELEMENT declaration requires whitespace");
+    }
+    skip_whitespace();
+    const std::string name = parse_name();
+    skip_whitespace();
+
+    std::string model;
+    while (!eof() && peek() != U'>') {
+      append_utf8(model, peek());
+      advance();
+    }
+    expect(U'>', "ELEMENT declaration close");
+
+    if (dtd_.elements.find(name) != dtd_.elements.end()) {
+      validity_error(start, "duplicate element declaration");
+    }
+    dtd_.elements.emplace(name, parse_element_model(model, start));
+  }
+
+  ElementDeclaration parse_element_model(std::string model,
+                                         SourceLocation source_location) const {
+    model = strip_ascii_space(std::move(model));
+    if (model == "ANY") {
+      return {ElementModelKind::Any, {}};
+    }
+    if (model == "EMPTY") {
+      return {ElementModelKind::Empty, {}};
+    }
+    if (model == "(#PCDATA)") {
+      return {ElementModelKind::Pcdata, {}};
+    }
+    if (model.size() >= 2 && model.front() == '(' && model.back() == ')') {
+      std::string_view body(model.data() + 1, model.size() - 2);
+      const auto children = split_names(body);
+      if (!children.empty()) {
+        return {ElementModelKind::Children, children};
+      }
+    }
+    throw_parse(ErrorKind::Validity, source_location,
+                "unsupported element declaration model");
+  }
+
+  void parse_entity_declaration() {
+    const SourceLocation start = location();
+    enforce_dtd_declaration_limit();
+    expect_sequence(U"<!ENTITY", "ENTITY declaration");
+    if (!is_space(peek())) {
+      fail(ErrorKind::WellFormedness, "ENTITY declaration requires whitespace");
+    }
+    skip_whitespace();
+    if (peek() == U'%') {
+      fail(ErrorKind::WellFormedness, "parameter entities are not supported");
+    }
+    const std::string name = parse_name();
+    skip_whitespace();
+    const std::string replacement = parse_quoted_literal();
+    if (replacement.size() > options_.max_entity_replacement_bytes) {
+      fail_at(ErrorKind::ResourceLimit, start,
+              "entity replacement exceeds max_entity_replacement_bytes");
+    }
+    skip_whitespace();
+    expect(U'>', "ENTITY declaration close");
+
+    if (dtd_.entities.find(name) != dtd_.entities.end()) {
+      validity_error(start, "duplicate entity declaration");
+    }
+    dtd_.entities.emplace(name, replacement);
+  }
+
+  void resolve_external_subset_if_needed() {
+    if (!dtd_.has_external_subset || options_.validation != ValidationMode::Dtd) {
+      return;
+    }
+    if (!options_.allow_external_dtd || !options_.external_dtd_resolver) {
+      validity_error(location(), "external DTD resolution is disabled");
+    }
+
+    const std::string subset =
+        options_.external_dtd_resolver(dtd_.external_system_id);
+    if (subset.size() > options_.max_external_subset_bytes) {
+      fail(ErrorKind::ResourceLimit,
+           "external DTD subset exceeds max_external_subset_bytes");
+    }
+    parse_external_subset_text(subset);
+  }
+
+  void parse_external_subset_text(std::string_view subset) {
+    std::size_t cursor = 0;
+    while (cursor < subset.size()) {
+      while (cursor < subset.size() &&
+             (subset[cursor] == ' ' || subset[cursor] == '\t' ||
+              subset[cursor] == '\n' || subset[cursor] == '\r')) {
+        ++cursor;
+      }
+      if (cursor >= subset.size()) {
+        return;
+      }
+      if (subset.compare(cursor, 9, "<!ELEMENT") == 0) {
+        const std::size_t close = subset.find('>', cursor);
+        if (close == std::string_view::npos) {
+          validity_error(location(), "truncated external element declaration");
+        }
+        parse_external_element_declaration(subset.substr(cursor, close - cursor + 1));
+        cursor = close + 1;
+        continue;
+      }
+      validity_error(location(), "unsupported external DTD declaration");
+    }
+  }
+
+  void parse_external_element_declaration(std::string_view declaration) {
+    enforce_dtd_declaration_limit();
+    const std::string prefix = "<!ELEMENT";
+    std::size_t cursor = prefix.size();
+    while (cursor < declaration.size() && declaration[cursor] == ' ') {
+      ++cursor;
+    }
+    const std::size_t name_start = cursor;
+    while (cursor < declaration.size() && declaration[cursor] != ' ') {
+      ++cursor;
+    }
+    const std::string name(declaration.substr(name_start, cursor - name_start));
+    while (cursor < declaration.size() && declaration[cursor] == ' ') {
+      ++cursor;
+    }
+    if (declaration.empty() || declaration.back() != '>') {
+      validity_error(location(), "invalid external element declaration");
+    }
+    const std::string model(
+        declaration.substr(cursor, declaration.size() - cursor - 1));
+    if (dtd_.elements.find(name) != dtd_.elements.end()) {
+      validity_error(location(), "duplicate element declaration");
+    }
+    dtd_.elements.emplace(name, parse_element_model(model, location()));
   }
 
   void parse_element() {
@@ -480,11 +795,13 @@ class Parser {
 
     element_stack_.push_back(name);
     element_name_stack_.push_back(element_name);
+    validation_stack_.push_back({name, {}, false});
     handler_.start_element(element_name, attribute_views);
 
     if (starts_with(U"/>")) {
       expect_sequence(U"/>", "empty element close");
       handler_.end_element(element_name);
+      finish_validation_frame(start);
       namespace_scopes_.pop_back();
       element_name_stack_.pop_back();
       element_stack_.pop_back();
@@ -493,9 +810,54 @@ class Parser {
 
     expect(U'>', "'>'");
     parse_content(name);
+    finish_validation_frame(start);
     namespace_scopes_.pop_back();
     element_name_stack_.pop_back();
     element_stack_.pop_back();
+  }
+
+  void finish_validation_frame(SourceLocation source_location) {
+    ValidationFrame frame = validation_stack_.back();
+    validation_stack_.pop_back();
+    validate_element(frame, source_location);
+    if (!validation_stack_.empty()) {
+      validation_stack_.back().child_elements.push_back(frame.name);
+    }
+  }
+
+  void validate_element(const ValidationFrame& frame,
+                        SourceLocation source_location) const {
+    if (options_.validation != ValidationMode::Dtd || !dtd_.has_doctype) {
+      return;
+    }
+    if (validation_stack_.empty() && frame.name != dtd_.root_name) {
+      validity_error(source_location, "document element does not match DOCTYPE");
+    }
+    const auto declaration = dtd_.elements.find(frame.name);
+    if (declaration == dtd_.elements.end()) {
+      validity_error(source_location, "element has no DTD declaration");
+    }
+
+    switch (declaration->second.kind) {
+      case ElementModelKind::Any:
+        return;
+      case ElementModelKind::Empty:
+        if (!frame.child_elements.empty() || frame.has_non_whitespace_text) {
+          validity_error(source_location, "EMPTY element has content");
+        }
+        return;
+      case ElementModelKind::Pcdata:
+        if (!frame.child_elements.empty()) {
+          validity_error(source_location, "PCDATA element has child elements");
+        }
+        return;
+      case ElementModelKind::Children:
+        if (frame.child_elements != declaration->second.children ||
+            frame.has_non_whitespace_text) {
+          validity_error(source_location, "element children do not match DTD model");
+        }
+        return;
+    }
   }
 
   std::vector<RawAttribute> parse_attributes() {
@@ -656,6 +1018,12 @@ class Parser {
       enforce_token_size(text.size(), start);
     }
     if (!text.empty()) {
+      if (!validation_stack_.empty() &&
+          std::any_of(text.begin(), text.end(), [](char ch) {
+            return ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r';
+          })) {
+        validation_stack_.back().has_non_whitespace_text = true;
+      }
       handler_.characters(text);
     }
   }
@@ -760,7 +1128,65 @@ class Parser {
     if (!ascii.empty() && ascii[0] == '#') {
       return parse_character_reference(ascii, start);
     }
+    const auto entity = dtd_.entities.find(ascii);
+    if (entity != dtd_.entities.end()) {
+      return expand_entity_text(entity->second, start, 0);
+    }
+    if (options_.validation == ValidationMode::Dtd) {
+      fail_at(ErrorKind::Validity, start, "undeclared entity reference");
+    }
     fail_at(ErrorKind::WellFormedness, start, "unknown entity reference");
+  }
+
+  std::string expand_entity_text(const std::string& text,
+                                 SourceLocation start,
+                                 std::size_t depth) {
+    if (depth > options_.max_entity_expansions) {
+      fail_at(ErrorKind::ResourceLimit, start,
+              "entity expansion count exceeds max_entity_expansions");
+    }
+    std::string expanded;
+    for (std::size_t cursor = 0; cursor < text.size(); ++cursor) {
+      if (text[cursor] != '&') {
+        expanded.push_back(text[cursor]);
+        continue;
+      }
+      const std::size_t end = text.find(';', cursor + 1);
+      if (end == std::string::npos) {
+        fail_at(ErrorKind::Validity, start, "truncated entity replacement");
+      }
+      ++entity_expansions_;
+      if (entity_expansions_ > options_.max_entity_expansions) {
+        fail_at(ErrorKind::ResourceLimit, start,
+                "entity expansion count exceeds max_entity_expansions");
+      }
+      const std::string name = text.substr(cursor + 1, end - cursor - 1);
+      if (name == "lt") {
+        expanded += "<";
+      } else if (name == "gt") {
+        expanded += ">";
+      } else if (name == "amp") {
+        expanded += "&";
+      } else if (name == "apos") {
+        expanded += "'";
+      } else if (name == "quot") {
+        expanded += "\"";
+      } else if (!name.empty() && name[0] == '#') {
+        expanded += parse_character_reference(name, start);
+      } else {
+        const auto nested = dtd_.entities.find(name);
+        if (nested == dtd_.entities.end()) {
+          fail_at(ErrorKind::Validity, start, "undeclared entity reference");
+        }
+        expanded += expand_entity_text(nested->second, start, depth + 1);
+      }
+      cursor = end;
+      if (expanded.size() > options_.max_entity_replacement_bytes) {
+        fail_at(ErrorKind::ResourceLimit, start,
+                "entity replacement exceeds max_entity_replacement_bytes");
+      }
+    }
+    return expanded;
   }
 
   std::string parse_character_reference(const std::string& ascii,
@@ -798,7 +1224,7 @@ class Parser {
       }
       value = static_cast<char32_t>(value * base + digit);
     }
-    if (!is_valid_xml_char(value)) {
+    if (!is_valid_xml_char(value, options_.version)) {
       fail_at(ErrorKind::WellFormedness, start,
               "character reference is not an XML character");
     }
@@ -816,6 +1242,8 @@ class Parser {
   std::vector<std::string> element_stack_;
   std::vector<QualifiedName> element_name_stack_;
   std::vector<std::map<std::string, std::string>> namespace_scopes_;
+  DtdState dtd_;
+  std::vector<ValidationFrame> validation_stack_;
 };
 
 }  // namespace
