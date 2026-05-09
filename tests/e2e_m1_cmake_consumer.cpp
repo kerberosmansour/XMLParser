@@ -125,9 +125,9 @@ SCENARIO("M1 public header compiles as CXX17", "[e2e][m1][REQ-API-01]") {
                "}\n");
 
     WHEN("the project configures and builds with C++17") {
-      run_command(std::string(CMAKE_COMMAND) + " -S " + quote(source_dir) + " -B " +
+      run_command(quote(fs::path(CMAKE_COMMAND)) + " -S " + quote(source_dir) + " -B " +
                   quote(build_dir));
-      run_command(std::string(CMAKE_COMMAND) + " --build " + quote(build_dir));
+      run_command(quote(fs::path(CMAKE_COMMAND)) + " --build " + quote(build_dir));
 
       THEN("the translation unit compiles") {
         REQUIRE(fs::exists(built_executable(build_dir, "header_compile")));
@@ -144,7 +144,7 @@ SCENARIO("M1 install tree consumer can find package", "[e2e][m1][REQ-PLAT-03]") 
     const fs::path consumer_build = root / "consumer-build";
 
     WHEN("a separate CMake project calls find_package(XmlParser CONFIG REQUIRED)") {
-      run_command(std::string(CMAKE_COMMAND) + " --install " + quote(XMLPARSER_BINARY_DIR) +
+      run_command(quote(fs::path(CMAKE_COMMAND)) + " --install " + quote(XMLPARSER_BINARY_DIR) +
                   " --prefix " + quote(install_prefix));
 
       write_file(consumer_source / "CMakeLists.txt",
@@ -168,9 +168,9 @@ SCENARIO("M1 install tree consumer can find package", "[e2e][m1][REQ-PLAT-03]") 
                  "  return 0;\n"
                  "}\n");
 
-      run_command(std::string(CMAKE_COMMAND) + " -S " + quote(consumer_source) + " -B " +
+      run_command(quote(fs::path(CMAKE_COMMAND)) + " -S " + quote(consumer_source) + " -B " +
                   quote(consumer_build) + " -DCMAKE_PREFIX_PATH=" + quote(install_prefix));
-      run_command(std::string(CMAKE_COMMAND) + " --build " + quote(consumer_build));
+      run_command(quote(fs::path(CMAKE_COMMAND)) + " --build " + quote(consumer_build));
 
       THEN("it links xmlparser::xmlparser and runs a minimal program") {
         const fs::path executable = built_executable(consumer_build, "consumer");

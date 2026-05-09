@@ -89,9 +89,9 @@ TEST_CASE("REQ_PLAT_02_public_headers_compile_as_cxx17",
              "  return options.max_external_subset_bytes > 0 ? 0 : 1;\n"
              "}\n");
 
-  run_command(std::string(CMAKE_COMMAND) + " -S " + quote(source_dir) + " -B " +
+  run_command(quote(fs::path(CMAKE_COMMAND)) + " -S " + quote(source_dir) + " -B " +
               quote(build_dir));
-  run_command(std::string(CMAKE_COMMAND) + " --build " + quote(build_dir));
+  run_command(quote(fs::path(CMAKE_COMMAND)) + " --build " + quote(build_dir));
 }
 
 TEST_CASE("REQ_PLAT_06_public_api_uses_fixed_width_or_standard_size_types_intentionally",

@@ -82,12 +82,12 @@ void write_consumer(const fs::path& source_dir) {
 void build_and_install_xmlparser(const fs::path& root, bool shared) {
   const fs::path build_dir = root / (shared ? "xmlparser-shared" : "xmlparser-static");
   const fs::path install_prefix = root / (shared ? "install-shared" : "install-static");
-  run_command(std::string(CMAKE_COMMAND) + " -S " + quote(XMLPARSER_SOURCE_DIR) +
+  run_command(quote(fs::path(CMAKE_COMMAND)) + " -S " + quote(XMLPARSER_SOURCE_DIR) +
               " -B " + quote(build_dir) +
               " -DXMLPARSER_BUILD_TESTS=OFF -DBUILD_SHARED_LIBS=" +
               (shared ? "ON" : "OFF"));
-  run_command(std::string(CMAKE_COMMAND) + " --build " + quote(build_dir));
-  run_command(std::string(CMAKE_COMMAND) + " --install " + quote(build_dir) +
+  run_command(quote(fs::path(CMAKE_COMMAND)) + " --build " + quote(build_dir));
+  run_command(quote(fs::path(CMAKE_COMMAND)) + " --install " + quote(build_dir) +
               " --prefix " + quote(install_prefix));
 }
 
@@ -98,9 +98,9 @@ void build_consumer(const fs::path& root, bool shared, bool run_executable) {
       root / (shared ? "consumer-shared-build" : "consumer-static-build");
   write_consumer(consumer_source);
 
-  run_command(std::string(CMAKE_COMMAND) + " -S " + quote(consumer_source) + " -B " +
+  run_command(quote(fs::path(CMAKE_COMMAND)) + " -S " + quote(consumer_source) + " -B " +
               quote(consumer_build) + " -DCMAKE_PREFIX_PATH=" + quote(install_prefix));
-  run_command(std::string(CMAKE_COMMAND) + " --build " + quote(consumer_build));
+  run_command(quote(fs::path(CMAKE_COMMAND)) + " --build " + quote(consumer_build));
 
   if (run_executable) {
     run_command(quote(built_executable(consumer_build, "consumer")));
