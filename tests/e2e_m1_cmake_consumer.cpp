@@ -92,6 +92,12 @@ fs::path built_executable(const fs::path& build_dir, const std::string& name) {
     return single_config;
   }
 
+  const fs::path release_config =
+      build_dir / "Release" / (name + std::string(CMAKE_EXECUTABLE_SUFFIX));
+  if (fs::exists(release_config)) {
+    return release_config;
+  }
+
   const fs::path debug_config =
       build_dir / "Debug" / (name + std::string(CMAKE_EXECUTABLE_SUFFIX));
   if (fs::exists(debug_config)) {

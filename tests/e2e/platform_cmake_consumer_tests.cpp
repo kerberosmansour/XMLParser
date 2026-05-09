@@ -47,6 +47,14 @@ std::string shell_command(const std::string& command) {
   return command;
 }
 
+std::string build_config_arg() {
+#ifdef _WIN32
+  return " --config Release";
+#else
+  return "";
+#endif
+}
+
 void write_file(const fs::path& path, const std::string& contents) {
   fs::create_directories(path.parent_path());
   std::ofstream output(path);
@@ -71,6 +79,11 @@ fs::path built_executable(const fs::path& build_dir, const std::string& name) {
   const fs::path single_config = build_dir / (name + std::string(CMAKE_EXECUTABLE_SUFFIX));
   if (fs::exists(single_config)) {
     return single_config;
+  }
+  const fs::path release_config =
+      build_dir / "Release" / (name + std::string(CMAKE_EXECUTABLE_SUFFIX));
+  if (fs::exists(release_config)) {
+    return release_config;
   }
   const fs::path debug_config =
       build_dir / "Debug" / (name + std::string(CMAKE_EXECUTABLE_SUFFIX));
@@ -105,9 +118,10 @@ void build_and_install_xmlparser(const fs::path& root, bool shared) {
               " -B " + quote(build_dir) +
               " -DXMLPARSER_BUILD_TESTS=OFF -DBUILD_SHARED_LIBS=" +
               (shared ? "ON" : "OFF"));
-  run_command(quote_command(fs::path(CMAKE_COMMAND)) + " --build " + quote(build_dir));
+  run_command(quote_command(fs::path(CMAKE_COMMAND)) + " --build " + quote(build_dir) +
+              build_config_arg());
   run_command(quote_command(fs::path(CMAKE_COMMAND)) + " --install " + quote(build_dir) +
-              " --prefix " + quote(install_prefix));
+              build_config_arg() + " --prefix " + quote(install_prefix));
 }
 
 void build_consumer(const fs::path& root, bool shared, bool run_executable) {
@@ -119,7 +133,8 @@ void build_consumer(const fs::path& root, bool shared, bool run_executable) {
 
   run_command(quote_command(fs::path(CMAKE_COMMAND)) + " -S " + quote(consumer_source) + " -B " +
               quote(consumer_build) + " -DCMAKE_PREFIX_PATH=" + quote(install_prefix));
-  run_command(quote_command(fs::path(CMAKE_COMMAND)) + " --build " + quote(consumer_build));
+  run_command(quote_command(fs::path(CMAKE_COMMAND)) + " --build " + quote(consumer_build) +
+              build_config_arg());
 
   if (run_executable) {
     run_command(quote(built_executable(consumer_build, "consumer")));
