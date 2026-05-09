@@ -1,0 +1,15 @@
+# Research Synthesis - xml-parsing-library
+
+The conformance target is not just "XML" in general: XML 1.0 Fifth Edition, XML 1.1 Second Edition, Namespaces in XML 1.0 Third Edition, and Namespaces in XML 1.1 Second Edition each introduce specific behavior that must be selected, tested, and documented. The design must handle explicit XML version and namespace-version behavior because the W3C specifications define separate conformance rules for XML 1.0, XML 1.1, Namespaces 1.0, and Namespaces 1.1.
+
+The test strategy must start with an external conformance harness before parser implementation accelerates. The W3C XML Conformance Test Suite covers XML and namespace recommendations, includes over 2000 test files, and encourages implementors to build a harness around it, so the design must handle fixture ingestion, expected-result metadata, and requirement traceability because the W3C test suite is the practical baseline for conformance evidence.
+
+The competitor landscape shows a gap between full-featured but heavy validating parsers and lightweight embeddable parsers. Xerces-C++ covers DOM, SAX, validation, namespaces, encodings, and schema-oriented features; Expat is stream-oriented; pugixml and TinyXML-2 favor lightweight DOM convenience but intentionally omit some compliance or validation breadth, so the design must handle a shared parser core with both SAX and DOM front-ends because existing tools force users to choose between streaming, DOM convenience, and strict conformance.
+
+Security defaults must be parser-level requirements, not optional hardening. Expat's security guidance names XXE and entity-expansion denial of service as XML parser risks and notes that default external URL access is avoided, so the design must handle disabled-by-default external DTD access, caller-owned resolvers, and bounded entity expansion because XML parser vulnerabilities often arise from external entity resolution and unbounded expansion.
+
+Packaging must be planned as a public interface. CMake package documentation expects package configuration files to expose imported targets and usage requirements, so the design must handle `XmlParserConfig.cmake`, `XmlParserConfigVersion.cmake`, exported target files, and install-tree consumer tests because downstream CMake users rely on `find_package` and imported targets rather than source-tree assumptions.
+
+The test framework should support BDD-style requirements tracing without becoming a runtime dependency. Catch2 supports unit and BDD-style tests for C++14 and later, so the design must handle Catch2 as a test-only dependency behind `XMLPARSER_BUILD_TESTS` because the runtime requirement forbids mandatory dependencies beyond the C++ standard library.
+
+Licensing and source provenance need a first-class checklist. Competitors are permissively licensed but still not implementation sources, and conformance fixtures have their own redistribution requirements, so the design must handle source/license tracking for any fixture or generated data because permissive licensing does not remove attribution and redistribution obligations.
