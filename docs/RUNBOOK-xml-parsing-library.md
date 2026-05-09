@@ -46,8 +46,8 @@
 | 1 | Project Skeleton, Public API Frame, And Conformance Harness | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m1.md` | `docs/slo/completion/xmlparser-m1.md` |
 | 2 | Encoding, Tokenizer, And XML 1.0 Well-Formed Parsing | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m2.md` | `docs/slo/completion/xmlparser-m2.md` |
 | 3 | Namespaces And Incremental SAX API | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m3.md` | `docs/slo/completion/xmlparser-m3.md` |
-| 4 | DOM Model, Mutation, Traversal, And Serialization | `in_progress` | 2026-05-09 | | `docs/slo/lessons/xmlparser-m4.md` | `docs/slo/completion/xmlparser-m4.md` |
-| 5 | DTD Validation, XML 1.1, Coverage, And Release Packaging | `not_started` | | | `docs/slo/lessons/xmlparser-m5.md` | `docs/slo/completion/xmlparser-m5.md` |
+| 4 | DOM Model, Mutation, Traversal, And Serialization | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m4.md` | `docs/slo/completion/xmlparser-m4.md` |
+| 5 | DTD Validation, XML 1.1, Coverage, And Release Packaging | `in_progress` | 2026-05-09 | | `docs/slo/lessons/xmlparser-m5.md` | `docs/slo/completion/xmlparser-m5.md` |
 
 Status values: `not_started | in_progress | blocked | done`.
 
@@ -712,12 +712,12 @@ The repository currently contains a minimal [README.md](../README.md), [LICENSE]
 
 #### Compatibility Checklist
 
-- [ ] Public API remains in `xmlparser::v1`.
-- [ ] `<xmlparser/xmlparser.h>` compiles as C++17.
-- [ ] One-shot and incremental SAX behavior from M2/M3 remains stable.
-- [ ] Install-tree consumer still works.
-- [ ] No runtime dependency is introduced.
-- [ ] Raw XML payloads remain absent from default diagnostics.
+- [x] Public API remains in `xmlparser::v1`.
+- [x] `<xmlparser/xmlparser.h>` compiles as C++17.
+- [x] One-shot and incremental SAX behavior from M2/M3 remains stable.
+- [x] Install-tree consumer still works.
+- [x] No runtime dependency is introduced.
+- [x] Raw XML payloads remain absent from default diagnostics.
 
 #### E2E Runtime Validation
 
@@ -732,14 +732,14 @@ The repository currently contains a minimal [README.md](../README.md), [LICENSE]
 
 #### Smoke Tests
 
-- [ ] `cmake -S . -B build -DXMLPARSER_BUILD_TESTS=ON` configures.
-- [ ] `cmake --build build` passes.
-- [ ] `ctest --test-dir build --output-on-failure` passes.
-- [ ] `ctest --test-dir build --output-on-failure -L req` passes.
-- [ ] `ctest --test-dir build --output-on-failure -L e2e` passes.
-- [ ] `cmake --build build --target format` passes or documents absence.
-- [ ] `cmake --build build --target lint` passes or documents absence.
-- [ ] `git status` shows no generated artifact residue except intentional source/docs.
+- [x] `cmake -S . -B build -DXMLPARSER_BUILD_TESTS=ON` configures.
+- [x] `cmake --build build` passes.
+- [x] `ctest --test-dir build --output-on-failure` passes.
+- [x] `ctest --test-dir build --output-on-failure -L req` passes.
+- [x] `ctest --test-dir build --output-on-failure -L e2e` passes.
+- [x] `cmake --build build --target format` passes or documents absence.
+- [x] `cmake --build build --target lint` passes or documents absence.
+- [x] `git status` shows no generated artifact residue except intentional source/docs.
 
 #### Evidence Log
 
@@ -748,19 +748,19 @@ The repository currently contains a minimal [README.md](../README.md), [LICENSE]
 | Repo hygiene | `git status --short --branch`; `git rev-parse --abbrev-ref HEAD`; `git symbolic-ref --short refs/remotes/origin/HEAD`; `git switch -c slo/xml-parsing-library-m4` | execution occurs on a task branch with existing work preserved | Before: `slo/xml-parsing-library-m3`; after: `slo/xml-parsing-library-m4`; default: `origin/main`; dirty tree contains only the M4 contract edit. | Pass | `gh issue list --label retro-derived --search "xmlparser" --state open --json number,title,body,url` returned `[]`. |
 | Prior lessons | read `docs/slo/lessons/xmlparser-m3.md` | M3 rules applied | M3 rules applied: DOM consumes namespace-aware SAX semantics; attribute APIs preserve qname/local/URI; serializer treats namespace declarations specially; incremental SAX tests stay green; tests avoid brittle event indices. | Pass | Contract includes these rules. |
 | Baseline tests | `ctest --test-dir build --output-on-failure` | green | Passed 4 of 4 tests in 1.49s before M4 code changes. | Pass | M3 baseline green. |
-| BDD/REQ tests created | `tests/req/**` | fail for expected placeholder DOM/serializer behavior before implementation | | | |
-| Implementation | DOM and serializer files | contract satisfied | | | |
-| Formatter | `cmake --build build --target format` | clean or documented target absence | | | |
-| Typecheck / build check | `cmake --build build` | clean | | | |
-| Static analyzer / linter | `cmake --build build --target lint` | clean or documented target absence | | | |
-| Dependency audit | no new runtime deps | pass | | | |
-| Full tests | `ctest --test-dir build --output-on-failure` | green | | | |
-| Requirement tests | `ctest --test-dir build --output-on-failure -L req` | green | | | |
-| E2E runtime | `ctest --test-dir build --output-on-failure -L e2e` | green | | | |
-| DOM invariant verification | mutation/traversal tests | ownership and cycle invariants hold | | | |
-| Serialization verification | serializer tests | escaping, namespace declarations, stream failure handled | | | |
-| Test artifact cleanup | `git status` | no generated artifact residue | | | |
-| Compatibility checks | include/link/install tests | no regressions | | | |
+| BDD/REQ tests created | `tests/req/**` | fail for expected placeholder DOM/serializer behavior before implementation | Initial M4 requirement run failed for expected placeholder DOM/serializer behavior (`document_element()==nullptr`, unsupported mutation/serialization). Contract audit later added `REQ_DOM_01_enforces_configured_dom_node_limit` and `REQ_DOM_05_set_attribute_ns_keeps_expanded_names_unique`; the supplemental tests passed with the completed implementation. | Pass | Supplemental coverage timing is recorded in M4 lessons. |
+| Implementation | DOM and serializer files | contract satisfied | Implemented `src/dom.cpp`, expanded `include/xmlparser/dom.h`, registered the source/tests in `CMakeLists.txt`, and wired `parse(std::string_view)` through a `DomBuilder` over the shared parser core. | Pass | No second parser path; no runtime dependency added. |
+| Formatter | `cmake --build build --target format` | clean or documented target absence | Target passed and printed `No formatter is configured in M1 - formatting is manually reviewed.` | Pass | Placeholder target remains. |
+| Typecheck / build check | `cmake --build build` | clean | Built `xmlparser`, Catch2, and `xmlparser_tests` successfully. | Pass | Ran after docs/tests were updated. |
+| Static analyzer / linter | `cmake --build build --target lint` | clean or documented target absence | Target passed and printed `No linter is configured in M1 - static analysis setup is deferred.` | Pass | Placeholder target remains. |
+| Dependency audit | no new runtime deps | pass | `rg -n "FetchContent|ExternalProject|add_subdirectory|find_package|target_link_libraries|GIT_REPOSITORY|https?://" CMakeLists.txt cmake include src` found only the existing test-only Catch2 FetchContent and `xml` namespace URI literal. | Pass | Production `xmlparser` target links only standard-library code. |
+| Full tests | `ctest --test-dir build --output-on-failure` | green | Passed 4 of 4 tests in 1.41s in the final post-retro run. | Pass | Includes BDD, req, conformance, and E2E labels. |
+| Requirement tests | `ctest --test-dir build --output-on-failure -L req` | green | Passed 2 of 2 labeled test targets in 0.02s in the final post-retro run. | Pass | Includes M4 DOM tests and conformance target. |
+| E2E runtime | `ctest --test-dir build --output-on-failure -L e2e` | green | Passed 1 of 1 labeled test target in 1.26s in the final post-retro run. | Pass | Install-tree consumer still configures, links, and runs. |
+| DOM invariant verification | mutation/traversal tests | ownership and cycle invariants hold | `REQ_DOM_02_rejects_cycle_creating_insert`, `REQ_DOM_02_rolls_back_failed_mutation`, `REQ_DOM_03_returns_parent_children_and_siblings`, and `REQ_DOM_03_depth_first_iterator_visits_nodes_in_document_order` pass. | Pass | Cross-document insertion and failed mutation preserve existing tree state. |
+| Serialization verification | serializer tests | escaping, namespace declarations, stream failure handled | `REQ_DOM_04_serializes_to_string`, `REQ_DOM_04_serializes_to_stream`, `REQ_DOM_04_preserves_namespace_declarations`, and `REQ_DOM_04_reports_stream_failure` pass. | Pass | Text/attribute escaping and stream error path covered. |
+| Test artifact cleanup | `git status` | no generated artifact residue | `git status --short --branch` shows only intentional M4 docs/closeout edits after the local DOM implementation commit; `build/` artifacts remain ignored. | Pass | Closeout files under `docs/slo/**` are intentionally new. |
+| Compatibility checks | include/link/install tests | no regressions | Public API remains under `xmlparser::v1`; `<xmlparser/xmlparser.h>` compiles as C++17; M2/M3 one-shot and incremental SAX tests pass; install-tree consumer passes; diagnostics tests still ensure raw XML is not echoed. | Pass | README, ARCHITECTURE, and traceability docs updated for DOM/serializer. |
 
 #### Definition Of Done
 
@@ -775,15 +775,203 @@ The repository currently contains a minimal [README.md](../README.md), [LICENSE]
 
 ### Milestone 5 - DTD Validation, XML 1.1, Coverage, And Release Packaging
 
-**Status**: scope proposed; full contract must be authored after M4 is confirmed.
+**Status**: contract authored; execution not started.
 
-**Goal**: Complete internal DTD validation, XML 1.1 behavior, optional external DTD resolver contract, cross-platform packaging evidence, and requirement-level coverage target.
+**Goal**: Complete the release gate by adding XML 1.1 selection, internal DTD validity checks, explicit external-DTD opt-in behavior, platform/package evidence, conformance fixture provenance, and parser-core coverage evidence.
 
-**Primary requirements**: REQ-STD-02, REQ-ERR-01, REQ-ERR-04, REQ-PLAT-01 through REQ-PLAT-06, REQ-API-01 through REQ-API-04.
+**Context**: M1-M4 established the public API, XML 1.0 parser core, namespace-aware SAX, incremental buffering, DOM ownership, and serializer behavior. M5 is the final hardening milestone: it must not introduce a second parser or loosen the safe-by-default posture. The M4 lessons require one named test for every M5 abuse ID, resource bound, and compatibility promise, and require a decision on serializer option behavior before release.
 
-**Planned abuse coverage**: entity expansion limits, duplicate/invalid DTD declarations, external resolver opt-in only, 32/64-bit assumptions, shared/static builds, coverage threshold enforcement.
+**Important design rule**: DTD validation and XML 1.1 checks must extend the existing `src/parser_core.cpp` event path so DOM, SAX, and one-shot parsing continue to observe the same tokenizer, namespace, entity, and diagnostic behavior.
 
-**Release gate**: M5 cannot be marked done until Section 8's Final Requirements Validation Gate is complete and every `REQ-*` row is `pass` or has an explicitly approved scope decision.
+**Refactor budget**: `Limited parser-core extension permitted`; parser behavior must move in behavior-preserving microsteps with M1-M4 tests green before and after each substantial change.
+
+#### Contract Block
+
+| Field | Value |
+|---|---|
+| Inputs | M4 DOM/SAX/parser core, M4 lessons, final validation gate in Section 8, threat-model rows `tm-xml-parsing-library-abuse-16` through `tm-xml-parsing-library-abuse-24` |
+| Outputs | XML 1.1 version selection tests, internal DTD declaration/entity/validity behavior, bounded caller-provided external DTD resolver contract, external DTD disabled-by-default proof, platform/package tests, conformance fixture manifest/provenance update, parser-core coverage evidence, CI workflow skeleton, docs and release gate updates |
+| Interfaces touched | `ParserOptions`, `ValidationMode`, `XmlVersion`, `ExternalDtdResolver`, `XmlParseException`, `XmlValidityException`, `parse(...)`, `SaxParser`, DOM parse path, CMake install/export surface |
+| Files allowed to change | `CMakeLists.txt`, `cmake/**`, `include/xmlparser/*.h`, `src/*.cpp`, `src/*.h`, `tests/**`, `.github/workflows/**`, `docs/RUNBOOK-xml-parsing-library.md`, `docs/slo/**`, `docs/requirements-traceability.md`, `docs/conformance-fixtures.md`, `ARCHITECTURE.md`, `README.md`, `.gitignore` |
+| Files to read before changing anything | `docs/slo/lessons/xmlparser-m4.md`, `docs/slo/design/xml-parsing-library-threat-model.md`, `docs/slo/design/xml-parsing-library-interfaces.md`, `ARCHITECTURE.md`, `SECURITY.md`, `include/xmlparser/options.h`, `include/xmlparser/errors.h`, `src/parser_core.cpp`, `src/xmlparser.cpp`, `src/dom.cpp`, `tests/e2e_m1_cmake_consumer.cpp` |
+| New files allowed | `tests/req/std_xml11_tests.cpp`, `tests/req/error_validation_distinction_tests.cpp`, `tests/req/error_dtd_validation_tests.cpp`, `tests/e2e/platform_cmake_consumer_tests.cpp`, `tests/e2e/platform_public_header_tests.cpp`, `tests/e2e/platform_dependency_audit.cmake`, `tests/e2e/platform_static_shared_tests.cmake`, `tests/coverage/parser_core_coverage.cmake`, `tests/fixtures/w3c/xmlconf/manifest.xml`, `tests/fixtures/w3c/xmlconf/README.md`, `.github/workflows/ci.yml`, `docs/slo/verify/xmlparser-m5.md`, `docs/slo/lessons/xmlparser-m5.md`, `docs/slo/completion/xmlparser-m5.md` |
+| New dependencies allowed | none at runtime; CI/test-only use of compiler coverage tools is allowed when available and must degrade with an explicit scope note when unavailable locally |
+| Migration allowed | no public namespace migration; additive public API allowed for a bounded caller-provided external-DTD resolver contract |
+| Compatibility commitments | M1-M4 tests still pass; public API remains in `xmlparser::v1`; install-tree consumer works; static and shared library builds work; no mandatory runtime dependency beyond the C++17 standard library; diagnostics still omit raw XML payloads |
+| Forbidden shortcuts | No XML Schema/XSD implementation in this runbook; no network/file fetching by default; no vendored parser implementation code; no generated-code execution from fixtures; no silent skips in Section 8 release gate; no marking M5 done with uncovered `REQ-*` rows |
+| Resource bounds introduced/changed | DTD entity expansion, declaration count, replacement text length, external subset byte limit for the caller-provided resolver callback, parser-core coverage threshold of at least 90 percent |
+| Invariants/assertions required | validity errors are distinct from well-formedness errors; external DTD resolution is opt-in only; entity expansion is bounded and cycle-safe; XML 1.0 and XML 1.1 character decisions are version-specific; fixture files are treated as data only; release matrix evidence is traceable to requirement IDs |
+| Debugger / inspection expectation | README debugger command remains valid for `[m5]`, `[req]`, `[e2e]`, and coverage failures where the local toolchain supports them |
+| Static analysis gates | CMake configure/build, `ctest`, formatter placeholder, lint placeholder, dependency audit, coverage script, and CI workflow syntax review |
+| Exemplar code to copy | `src/parser_core.cpp` recursive-descent structure and typed error helpers; `tests/e2e_m1_cmake_consumer.cpp` temporary CMake project pattern; `tests/req/*` requirement-named Catch2 style |
+| Anti-exemplar code not to copy | Do not copy third-party parser implementation code or W3C harness code; do not add a second parser path for DTD or XML 1.1; do not execute fixture files as scripts |
+| Refactoring discipline | Behavior-preserving microsteps with pre-test and post-test proof; parser-core changes must keep M1-M4 DOM/SAX tests green |
+| AI tolerance contract | N/A - no AI component |
+| Data classification | Public for code/docs/fixtures; caller XML remains confidential in downstream use and must not appear in diagnostics by default |
+| Proactive controls in play | OWASP C1 Define Security Requirements; C2 Leverage Security Frameworks and Libraries; C5 Validate All Inputs; C9 Implement Security Logging and Monitoring through safe diagnostics only; C10 Handle All Errors and Exceptions |
+| Abuse acceptance scenarios | `tm-xml-parsing-library-abuse-16` through `tm-xml-parsing-library-abuse-24` covered by DTD entity/declaration/validity tests, external resolver opt-in tests, fixture provenance tests, dependency pinning, and no-copy release evidence |
+
+#### Out Of Scope / Must Not Do
+
+- Do not implement XML Schema/XSD, XPath, XQuery, XSLT, binary XML, or catalog resolution.
+- Do not perform network or filesystem access for external DTDs by default.
+- Do not vendor parser implementation code or execute fixture files.
+- Do not make the parser fully streaming beyond the existing bounded `feed` / `finish` contract.
+- Do not claim complete W3C conformance if imported fixture coverage is partial; record approved exceptions explicitly.
+- Do not implement serializer pretty-print or non-UTF-8 output unless the release gate explicitly needs it; otherwise document those options as reserved/future behavior.
+
+#### Files Allowed To Change
+
+| File | Planned Change |
+|---|---|
+| `CMakeLists.txt` | Register M5 requirement, E2E, coverage, and fixture tests |
+| `include/xmlparser/options.h` | Add bounded DTD/external resolver options and callback storage |
+| `include/xmlparser/errors.h` | Keep typed validity/well-formedness separation stable; additive declarations only if needed |
+| `include/xmlparser/parser.h` | Add caller-provided external resolver contract if not housed entirely in options |
+| `include/xmlparser/xmlparser.h` | Continue aggregate include coverage |
+| `src/parser_core.cpp` | Extend XML 1.1, DOCTYPE/internal subset, entity declaration, and validation behavior |
+| `src/parser_core.h` | Internal declarations if parser-core helpers are split |
+| `src/xmlparser.cpp` | Wire public options/resolver behavior into parser core without changing DOM/SAX parity |
+| `src/dom.cpp` | Serializer option documentation tests only if needed; no unrelated DOM refactor |
+| `tests/req/**` | Add XML 1.1, DTD, validity separation, exception safety, and conformance cases |
+| `tests/e2e/**` | Add platform/header/static/shared/dependency audit tests |
+| `tests/coverage/**` | Add parser-core coverage script and threshold check |
+| `tests/fixtures/w3c/xmlconf/**` | Add manifest/provenance metadata and a curated data-only fixture subset if license gate passes |
+| `.github/workflows/ci.yml` | Add Linux/macOS/Windows and static/shared build matrix |
+| `docs/conformance-fixtures.md` | Complete source/license/hash/redistribution decision for fixtures used in M5 |
+| `docs/requirements-traceability.md` | Map final `REQ-*` rows to named tests/evidence |
+| `ARCHITECTURE.md` | Document DTD/XML 1.1/external resolver decisions |
+| `README.md` | Document validation mode, XML 1.1 selection, release limitations, and debugging commands |
+| `.gitignore` | Add coverage/sanitizer artifacts only if generated files are observed |
+| `docs/RUNBOOK-xml-parsing-library.md` | Control artifact: M5 tracker/evidence/final gate updates |
+| `docs/slo/verify/xmlparser-m5.md` | NEW after verification |
+| `docs/slo/lessons/xmlparser-m5.md` | NEW after milestone completion |
+| `docs/slo/completion/xmlparser-m5.md` | NEW after milestone completion |
+
+#### Step By Step
+
+1. Preserve M4 closeout state, switch to `slo/xml-parsing-library-m5`, and run the baseline suite.
+2. Write M5 requirement tests first: XML 1.1, validity separation, DTD validation, external DTD opt-in, platform/package, dependency audit, and coverage gate.
+3. Run M5 tests and confirm they fail for expected missing behavior or missing evidence.
+4. Extend parser-core XML version and internal DTD/entity behavior using the existing tokenizer/event path.
+5. Add external-DTD disabled-by-default behavior and optional resolver contract only if required by tests.
+6. Add platform/static/shared/header/dependency audit tests and CI workflow evidence.
+7. Add conformance fixture manifest/provenance metadata and coverage script output.
+8. Update traceability, README, architecture, conformance docs, and Section 8 final gate rows.
+9. Run build, BDD, req, conformance, E2E, coverage, format, lint, dependency, and cleanup checks.
+10. Write verification report, lessons, completion summary, and update the milestone tracker.
+
+#### BDD Acceptance Scenarios
+
+**Feature: DTD validation, XML 1.1, and release evidence**
+
+| Scenario | Category | Given | When | Then |
+|---|---|---|---|---|
+| M5 selects XML 1.1 behavior | happy path | XML declares `version="1.1"` and uses an XML 1.1-only character reference | parser runs with `ParserOptions::version = Xml11` | parse succeeds and source locations remain valid |
+| M5 rejects XML 1.1-only input in XML 1.0 mode | invalid input | XML 1.0 mode parses the same XML 1.1-only character reference | parser runs | typed well-formedness error is thrown |
+| M5 rejects unsupported version mismatch | invalid input | XML declaration and `ParserOptions::version` disagree | parser runs | typed well-formedness error is thrown |
+| M5 validates internal DTD element declarations | happy path | XML has internal DTD declarations matching the document element/content | parser runs with `ValidationMode::Dtd` | parse succeeds |
+| M5 separates validity from well-formedness | invalid input | XML is well-formed but violates declared DTD content | parser runs with `ValidationMode::Dtd` | `ErrorKind::Validity` / `XmlValidityException` path is observed, not well-formedness |
+| M5 reports undeclared entity in validating mode | abuse `tm-xml-parsing-library-abuse-18` | validating parse references an undeclared entity | parser runs | validity error is reported without raw entity value leakage |
+| M5 bounds recursive entity expansion | abuse `tm-xml-parsing-library-abuse-16` | DTD defines recursive or expanding entities | parser runs | resource-limit or validity error is thrown before unbounded expansion |
+| M5 rejects duplicate/conflicting DTD declarations | abuse `tm-xml-parsing-library-abuse-17` | internal subset declares duplicate/conflicting element or attribute declarations | parser runs with validation | typed validity error is thrown |
+| M5 external DTD is disabled by default | abuse `tm-xml-parsing-library-abuse-19` | XML references an external subset | parser runs with default options | no external resolver is called and a typed diagnostic explains the opt-in boundary |
+| M5 external resolver failure is bounded | abuse `tm-xml-parsing-library-abuse-20`, `tm-xml-parsing-library-abuse-21` | caller-provided resolver fails or returns oversized data | parser runs with explicit resolver opt-in | typed validity/resource error is thrown; parse does not hang |
+| M5 treats W3C fixtures as data only | abuse `tm-xml-parsing-library-abuse-22`, `tm-xml-parsing-library-abuse-24` | fixture manifest references XML files | conformance harness runs | only XML data is read; no fixture script/code is executed; provenance is recorded |
+| M5 pins test dependencies and audits runtime deps | abuse `tm-xml-parsing-library-abuse-23` | dependency audit test inspects CMake targets | audit runs | Catch2 remains test-only and no runtime dependency is introduced |
+| M5 public headers compile as C++17 | compatibility | separate temp project includes `<xmlparser/xmlparser.h>` | CMake configures/builds | header compiles without compiler-extension dependency |
+| M5 install/static/shared consumers link | compatibility | temp projects consume installed static and shared builds | CMake configures/builds/runs | `xmlparser::xmlparser` links in both modes |
+| M5 coverage threshold is enforced | release gate | parser-core coverage script runs on supported local toolchain | coverage command runs | parser-core line coverage is at least 90 percent or an explicit unsupported-toolchain note blocks release completion |
+| M5 CI matrix is declared | release gate | `.github/workflows/ci.yml` exists | workflow is inspected | Linux, macOS, Windows, static/shared, req, e2e, and coverage jobs are declared |
+
+#### Regression Tests
+
+- `ctest --test-dir build --output-on-failure` must pass.
+- M1-M4 BDD, E2E, requirement, DOM, SAX, namespace, and diagnostics tests must still pass.
+- M5 requirement tests under `tests/req/**` must pass with the `req` CTest label.
+- M5 E2E tests under `tests/e2e/**` must pass with the `e2e` CTest label.
+- M5 conformance/fixture tests must pass or record approved exceptions in `docs/conformance-fixtures.md`.
+
+#### Compatibility Checklist
+
+- [ ] Public API remains in `xmlparser::v1`.
+- [ ] `<xmlparser/xmlparser.h>` compiles as C++17 in an external temp project.
+- [ ] One-shot parse, SAX parse, incremental SAX, DOM parse, and serializer tests from M1-M4 remain stable.
+- [ ] Install-tree consumer still works.
+- [ ] Static and shared builds both compile and link a consumer.
+- [ ] No mandatory runtime dependency is introduced.
+- [ ] Raw XML payloads and entity replacement text remain absent from default diagnostics.
+- [ ] XML Schema/XSD is documented as out of scope unless user explicitly expands this runbook.
+- [ ] Serializer pretty-print and non-UTF-8 output behavior is either implemented with tests or documented as reserved/future behavior.
+
+#### E2E Runtime Validation
+
+**File**: M5 requirement/e2e tests plus existing install-tree consumer.
+
+| E2E Test | What It Proves | Pass Criteria |
+|---|---|---|
+| `REQ_PLAT_02_public_headers_compile_as_cxx17` | Public headers remain C++17 consumer-safe | temp project configures and builds |
+| `REQ_PLAT_03_find_package_imported_target_builds_consumer` | Installed package still works after M5 changes | temp project configures, builds, links, and runs |
+| `REQ_PLAT_04_default_link_has_no_non_std_runtime_dependency` | Runtime target has no new dependency | dependency audit passes |
+| `REQ_PLAT_05_builds_static_library` | Static library build mode works | static build configures/builds/links consumer |
+| `REQ_PLAT_05_builds_shared_library` | Shared library build mode works | shared build configures/builds/links consumer |
+| `REQ_STD_02_selects_xml11_at_runtime` | XML 1.1 mode is observable through public options | version-specific parse behavior matches expectation |
+| `REQ_ERR_04_external_dtd_resolver_is_not_called_by_default` | External fetch surface is safe by default | resolver not invoked / diagnostic is typed |
+| `REQ_API_04_parser_core_line_coverage_is_at_least_90_percent` | Release coverage gate is enforced | coverage script passes or blocks completion with explicit unsupported-toolchain evidence |
+
+#### Smoke Tests
+
+- [ ] `cmake -S . -B build -DXMLPARSER_BUILD_TESTS=ON` configures.
+- [ ] `cmake --build build` passes.
+- [ ] `ctest --test-dir build --output-on-failure` passes.
+- [ ] `ctest --test-dir build --output-on-failure -L req` passes.
+- [ ] `ctest --test-dir build --output-on-failure -L e2e` passes.
+- [ ] `ctest --test-dir build --output-on-failure -L conformance` passes.
+- [ ] `cmake --build build --target format` passes or documents absence.
+- [ ] `cmake --build build --target lint` passes or documents absence.
+- [ ] Coverage gate passes or blocks M5 completion with explicit toolchain limitation.
+- [ ] Dependency audit confirms no runtime dependency beyond the C++17 standard library.
+- [ ] `git status` shows no generated artifact residue except intentional source/docs/fixtures.
+
+#### Evidence Log
+
+| Step | Command / Check | Expected Result | Actual Result | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| Repo hygiene | `git status --short --branch`; `git rev-parse --abbrev-ref HEAD`; `git symbolic-ref --short refs/remotes/origin/HEAD`; `git switch -c slo/xml-parsing-library-m5` | execution occurs on a task branch with existing work preserved | Before: `slo/xml-parsing-library-m4`; after: `slo/xml-parsing-library-m5`; default: `origin/main`; dirty tree carried intentional M4 closeout docs and M5 planning docs. | Pass | `gh issue list --label retro-derived --search "xmlparser" --state open --json number,title,body,url` returned `[]`. |
+| Prior lessons | read `docs/slo/lessons/xmlparser-m4.md` | M4 rules applied | M4 rules applied: keep DOM on shared parser core, add one named test for every abuse/resource/compatibility promise, keep M1-M4 tests green, decide serializer option scope, and preserve namespace declaration handling. | Pass | M5 contract records serializer options as reserved/future unless release gate expands scope. |
+| Baseline tests | `ctest --test-dir build --output-on-failure` | green before M5 code changes | Passed 4 of 4 tests in 1.74s before M5 code changes. | Pass | BDD, req, conformance, and E2E entries all green. |
+| BDD/REQ tests created | `tests/req/**`, `tests/e2e/**`, `tests/coverage/**` | fail for expected missing M5 behavior/evidence before implementation | | | |
+| Implementation | parser-core, DTD/XML 1.1, platform, coverage, docs | contract satisfied | | | |
+| Formatter | `cmake --build build --target format` | clean or documented target absence | | | |
+| Typecheck / build check | `cmake --build build` | clean | | | |
+| Static analyzer / linter | `cmake --build build --target lint` | clean or documented target absence | | | |
+| Dependency audit | runtime dependency scan | no runtime dependency added | | | |
+| Full tests | `ctest --test-dir build --output-on-failure` | green | | | |
+| Requirement tests | `ctest --test-dir build --output-on-failure -L req` | green | | | |
+| E2E runtime | `ctest --test-dir build --output-on-failure -L e2e` | green | | | |
+| Conformance tests | `ctest --test-dir build --output-on-failure -L conformance` | green or approved exceptions documented | | | |
+| Coverage gate | `cmake -P tests/coverage/parser_core_coverage.cmake` or configured target | at least 90 percent parser-core line coverage or blocks completion | | | |
+| XML 1.1 verification | `REQ_STD_02_*` tests | version-specific character behavior enforced | | | |
+| DTD validity verification | `REQ_ERR_01_*`, `REQ_ERR_04_*` tests | validity separated from well-formedness | | | |
+| External DTD safety | default and opt-in resolver tests | disabled by default; bounded failure handling if resolver exists | | | |
+| Platform/package verification | public header/static/shared/install tests | package is consumer-safe | | | |
+| Final requirements gate | Section 8 checklist | every `REQ-*` row has passing evidence or approved scope decision | | | |
+| Test artifact cleanup | `git status`; generated file scan | no generated artifact residue | | | |
+| Compatibility checks | include/link/install/M1-M4 tests | no regressions | | | |
+
+#### Definition Of Done
+
+- All listed M5 scenarios pass.
+- M1-M4 tests still pass.
+- XML 1.1 selection has version-specific tests.
+- Internal DTD validation separates validity from well-formedness errors.
+- Entity and DTD growth paths are bounded and tested.
+- External DTD resolution remains disabled by default and opt-in behavior is explicit.
+- Platform/static/shared/header/dependency tests pass.
+- Parser-core coverage gate reaches at least 90 percent or M5 remains blocked with explicit toolchain evidence.
+- W3C/conformance fixture provenance is complete for any imported data.
+- Section 8 final requirements gate is complete.
+- Requirement traceability, README, architecture, conformance docs, verification report, lessons, completion summary, and milestone tracker are updated.
 
 ---
 
@@ -848,11 +1036,11 @@ The required test files above must include at least these concrete cases. Add mo
 | REQ-STD-03 | `REQ_STD_03_resolves_default_namespace_scope`; `REQ_STD_03_resolves_prefixed_names_across_nested_scopes`; `REQ_STD_03_rejects_duplicate_expanded_attribute_names`; `REQ_STD_03_handles_namespace_11_undeclaration` |
 | REQ-STD-04 | `REQ_STD_04_detects_utf8_bom`; `REQ_STD_04_detects_utf16le_bom`; `REQ_STD_04_detects_utf16be_bom`; `REQ_STD_04_rejects_truncated_multibyte_sequence_with_byte_offset` |
 | REQ-STD-05 | `REQ_STD_05_parses_xml_declaration`; `REQ_STD_05_emits_processing_instruction`; `REQ_STD_05_preserves_cdata_boundaries_in_events`; `REQ_STD_05_parses_comments`; `REQ_STD_05_resolves_predefined_and_character_entities` |
-| REQ-DOM-01 | `REQ_DOM_01_builds_document_element_attribute_text_comment_pi_cdata_nodes`; `REQ_DOM_01_preserves_node_type_identity_after_parse` |
+| REQ-DOM-01 | `REQ_DOM_01_builds_document_element_attribute_text_comment_pi_cdata_nodes`; `REQ_DOM_01_preserves_node_type_identity_after_parse`; `REQ_DOM_01_enforces_configured_dom_node_limit` |
 | REQ-DOM-02 | `REQ_DOM_02_creates_inserts_modifies_and_removes_nodes`; `REQ_DOM_02_rejects_cycle_creating_insert`; `REQ_DOM_02_rolls_back_failed_mutation` |
 | REQ-DOM-03 | `REQ_DOM_03_returns_parent_children_and_siblings`; `REQ_DOM_03_depth_first_iterator_visits_nodes_in_document_order` |
 | REQ-DOM-04 | `REQ_DOM_04_serializes_to_string`; `REQ_DOM_04_serializes_to_stream`; `REQ_DOM_04_preserves_namespace_declarations`; `REQ_DOM_04_reports_stream_failure` |
-| REQ-DOM-05 | `REQ_DOM_05_get_attribute_namespace_unaware`; `REQ_DOM_05_get_attribute_ns_distinguishes_same_local_name_different_uri` |
+| REQ-DOM-05 | `REQ_DOM_05_get_attribute_namespace_unaware`; `REQ_DOM_05_get_attribute_ns_distinguishes_same_local_name_different_uri`; `REQ_DOM_05_set_attribute_ns_keeps_expanded_names_unique` |
 | REQ-SAX-01 | `REQ_SAX_01_parses_without_dom_allocation`; `REQ_SAX_01_streams_large_document_with_bounded_memory` |
 | REQ-SAX-02 | `REQ_SAX_02_emits_document_start_end`; `REQ_SAX_02_emits_element_start_end`; `REQ_SAX_02_emits_character_pi_comment_and_cdata_events` |
 | REQ-SAX-03 | `REQ_SAX_03_registers_virtual_handler`; `REQ_SAX_03_registers_std_function_callbacks`; `REQ_SAX_03_allows_selective_callbacks` |

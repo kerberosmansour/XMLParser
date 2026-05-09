@@ -28,7 +28,13 @@ future conformance fixtures.
 | `REQ-SAX-03` virtual handlers and std::function callback adapter | `tests/req/sax_callback_registration_tests.cpp` | `REQ_SAX_03_registers_virtual_handler`; `REQ_SAX_03_registers_std_function_callbacks`; `REQ_SAX_03_allows_selective_callbacks` |
 | `REQ-SAX-04` incremental chunking | `tests/req/sax_incremental_tests.cpp` | `REQ_SAX_04_accepts_one_byte_chunks`; `REQ_SAX_04_accepts_chunks_split_inside_markup`; `REQ_SAX_04_accepts_chunks_split_inside_multibyte_sequence`; `REQ_SAX_04_finish_rejects_truncated_document` |
 | `REQ-SAX-05` namespace-aware SAX event data | `tests/req/sax_namespace_event_tests.cpp` | `REQ_SAX_05_element_events_include_uri_local_and_qname`; `REQ_SAX_05_attribute_events_include_uri_local_and_qname` |
+| `REQ-DOM-01` DOM node tree and parser-built node identity | `tests/req/dom_model_tests.cpp` | `REQ_DOM_01_builds_document_element_attribute_text_comment_pi_cdata_nodes`; `REQ_DOM_01_preserves_node_type_identity_after_parse`; `REQ_DOM_01_enforces_configured_dom_node_limit` |
+| `REQ-DOM-02` DOM read/write mutation and invariant enforcement | `tests/req/dom_mutation_tests.cpp` | `REQ_DOM_02_creates_inserts_modifies_and_removes_nodes`; `REQ_DOM_02_rejects_cycle_creating_insert`; `REQ_DOM_02_rolls_back_failed_mutation` |
+| `REQ-DOM-03` DOM traversal | `tests/req/dom_traversal_tests.cpp` | `REQ_DOM_03_returns_parent_children_and_siblings`; `REQ_DOM_03_depth_first_iterator_visits_nodes_in_document_order` |
+| `REQ-DOM-04` DOM serialization | `tests/req/dom_serialization_tests.cpp` | `REQ_DOM_04_serializes_to_string`; `REQ_DOM_04_serializes_to_stream`; `REQ_DOM_04_preserves_namespace_declarations`; `REQ_DOM_04_reports_stream_failure` |
+| `REQ-DOM-05` qualified-name and namespace-aware attribute access | `tests/req/dom_attribute_access_tests.cpp` | `REQ_DOM_05_get_attribute_namespace_unaware`; `REQ_DOM_05_get_attribute_ns_distinguishes_same_local_name_different_uri`; `REQ_DOM_05_set_attribute_ns_keeps_expanded_names_unique` |
 | `REQ-ERR-03` non-recoverable well-formedness errors stop parse before validity recovery exists | `tests/req/error_recoverable_callback_tests.cpp` | `REQ_ERR_03_non_recoverable_well_formedness_error_stops_parse` |
+| `REQ-ERR-05` DOM resource and mutation failures leave trees consistent | `tests/req/dom_model_tests.cpp`; `tests/req/dom_mutation_tests.cpp` | `REQ_DOM_01_enforces_configured_dom_node_limit`; `REQ_DOM_02_rejects_cycle_creating_insert`; `REQ_DOM_02_rolls_back_failed_mutation` |
 
 ## Future Coverage Hooks
 
@@ -36,6 +42,6 @@ future conformance fixtures.
   ingestion are implemented.
 - `REQ-SAX-*` expands again in M5 only if conformance fixtures reveal extra
   namespace/SAX cases.
-- `REQ-DOM-*` expands in M4 when DOM mutation, traversal, and serialization
-  are implemented.
+- `REQ-DOM-*` expands again in M5 only if release/conformance work reveals
+  additional DOM round-trip cases.
 - `REQ-VALID-*` expands in M5 when DTD validation is implemented.

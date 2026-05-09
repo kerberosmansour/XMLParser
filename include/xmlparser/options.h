@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
 #include <string>
+#include <string_view>
 
 #include <xmlparser/version.h>
 
@@ -24,12 +26,15 @@ enum class NamespaceMode {
   Disabled,
 };
 
+using ExternalDtdResolver = std::function<std::string(std::string_view system_id)>;
+
 struct ParserOptions {
   XmlVersion version = XmlVersion::Xml10;
   Encoding encoding = Encoding::Auto;
   ValidationMode validation = ValidationMode::None;
   NamespaceMode namespaces = NamespaceMode::Enabled;
   bool allow_external_dtd = false;
+  ExternalDtdResolver external_dtd_resolver;
 
   std::size_t max_document_bytes = 16U * 1024U * 1024U;
   std::size_t max_depth = 256U;
@@ -37,6 +42,9 @@ struct ParserOptions {
   std::size_t max_attributes_per_element = 1024U;
   std::size_t max_entity_expansions = 100000U;
   std::size_t max_dom_nodes = 1000000U;
+  std::size_t max_dtd_declarations = 4096U;
+  std::size_t max_entity_replacement_bytes = 1024U * 1024U;
+  std::size_t max_external_subset_bytes = 1024U * 1024U;
 };
 
 struct SerializeOptions {

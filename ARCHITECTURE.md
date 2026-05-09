@@ -53,7 +53,7 @@ Caller application
 | Public API facade | Exposes parse, SAX parser, DOM types, options, exceptions, and serializer through `xmlparser::v1`. | New | M1-M5 | `include/xmlparser/xmlparser.h`, CMake target |
 | InputSource + EncodingDetector | Detects BOM, UTF-8, UTF-16 LE/BE, normalizes source locations, and feeds code points to the tokenizer. | New | M2 | `ParserOptions::encoding`, byte offset mapping |
 | Tokenizer / Well-Formedness State Machine | Implements XML markup scanning, declarations, comments, CDATA, PIs, character data, and structural well-formedness checks. | New | M2 | internal token stream |
-| EntityResolver + DtdValidator | Resolves predefined and character entities, supports internal DTD validation, and isolates optional external DTD resolution. | New | M4-M5 | `EntityResolver`, validity diagnostics |
+| EntityResolver + DtdValidator | Resolves predefined and character entities, supports internal DTD validation, and isolates optional external DTD resolution. | New | M5 | `EntityResolver`, validity diagnostics |
 | NamespaceStack + EventBuilder | Resolves prefixes and URIs by scope for element and attribute events. | New | M3 | `QualifiedName`, `AttributeView`, SAX events |
 | SAX parser | Streams events without building a full tree and supports arbitrary chunk boundaries. | New | M3 | `SaxHandler`, `SaxParser::feed`, `finish` |
 | DOM builder and DOM model | Builds mutable in-memory tree with Document, Element, Attribute, Text, Comment, ProcessingInstruction, and CDATASection. | New | M4 | `Document`, `Node`, traversal and mutation APIs |
@@ -69,9 +69,8 @@ drives the existing public `SaxHandler` callbacks for document, element,
 character, processing-instruction, comment, and CDATA events.
 
 The implemented M2 path enforces configured document byte, element depth, token
-length, attribute count, and entity expansion limits. Namespace resolution,
-incremental chunk carryover, final DOM ownership, serializer behavior, XML 1.1,
-DTD validation, and external resolver behavior remain planned components.
+length, attribute count, and entity expansion limits. XML 1.1, DTD validation,
+and external resolver behavior remain planned components.
 
 Milestone 3 extends the same parser core with namespace scope resolution and a
 buffered incremental SAX facade. `SaxParser::feed` accumulates caller chunks up
@@ -81,6 +80,15 @@ one-shot and incremental APIs. Namespace declarations are scoped with the
 element stack, are not emitted as ordinary attributes, and event `QualifiedName`
 values include URI, local name, and qname. Duplicate expanded attribute names
 are rejected during start-tag processing.
+
+Milestone 4 adds DOM construction on top of the same namespace-aware event
+stream rather than introducing a second parser. `DomBuilder` converts parser
+events into `Document`-owned nodes, enforces `ParserOptions::max_dom_nodes`, and
+preserves element and attribute URI/local/qname identity. DOM mutation keeps a
+single owning document per node, rejects cycles and cross-document insertion,
+and maintains parent/child/sibling relationships. The serializer walks the DOM,
+escapes text and attribute values, emits required namespace declarations for
+qualified names, and reports failed output streams through `XmlParseException`.
 
 ## Data Flow Summary
 

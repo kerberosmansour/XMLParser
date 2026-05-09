@@ -3,8 +3,8 @@
 XMLParser is a C++17 XML parsing library under active SLO-driven
 development. The current milestone provides XML 1.0 well-formedness parsing,
 UTF-8/UTF-16 BOM handling, source-location diagnostics, namespace-aware SAX
-events, and an incremental `feed` / `finish` API. DOM ownership,
-serialization, XML 1.1, and DTD validation land in later milestones.
+events, an incremental `feed` / `finish` API, a document-owned DOM, and DOM
+serialization. XML 1.1 and DTD validation land in later milestones.
 
 ## Build
 
@@ -69,6 +69,35 @@ int main() {
 The one-shot parser accepts well-formed XML 1.0 and reports malformed input
 through `XmlParseException` with `ErrorKind`, line, column, and byte offset.
 Error messages omit raw XML payloads by default.
+
+## DOM And Serialization
+
+```cpp
+#include <xmlparser/xmlparser.h>
+
+#include <string>
+
+int main() {
+  xmlparser::v1::Document document =
+      xmlparser::v1::parse("<root xmlns=\"urn:example\"><child/></root>");
+
+  if (auto* root = document.document_element()) {
+    auto& note = document.create_element("note");
+    note.set_attribute("kind", "demo");
+    note.append_child(document.create_text("Hello & goodbye"));
+    root->append_child(note);
+  }
+
+  const std::string xml = xmlparser::v1::serialize(document);
+  (void)xml;
+}
+```
+
+The DOM model owns nodes through `Document`, exposes parent/child/sibling and
+depth-first traversal APIs, rejects cycle and cross-document insertion, and
+supports qualified-name plus namespace URI/local-name attribute access. The
+serializer escapes text and attribute values, emits namespace declarations
+needed by qualified names, and reports failed output streams with typed errors.
 
 ## SAX-Style Events
 
@@ -149,6 +178,7 @@ A failing Catch2 scenario can be launched under a debugger after building:
 
 ```sh
 lldb -- build/xmlparser_tests "[bdd]"
+lldb -- build/xmlparser_tests "[m4]"
 ```
 
 Use `gdb --args build/xmlparser_tests "[bdd]"` on systems where `gdb` is the
