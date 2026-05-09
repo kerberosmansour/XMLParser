@@ -24,7 +24,8 @@ set_target_properties(
   xmlparser
   PROPERTIES EXPORT_NAME xmlparser
              VERSION ${PROJECT_VERSION}
-             SOVERSION ${PROJECT_VERSION_MAJOR})
+             SOVERSION ${PROJECT_VERSION_MAJOR}
+             WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 target_compile_features(xmlparser PUBLIC cxx_std_17)
 target_include_directories(
