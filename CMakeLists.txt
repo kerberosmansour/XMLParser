@@ -85,8 +85,16 @@ if(XMLPARSER_BUILD_TESTS)
     GIT_SHALLOW TRUE)
   FetchContent_MakeAvailable(Catch2)
 
-  add_executable(xmlparser_tests tests/bdd_m1_public_api.cpp
-                                 tests/e2e_m1_cmake_consumer.cpp)
+  add_executable(
+    xmlparser_tests
+    tests/bdd_m1_public_api.cpp
+    tests/e2e_m1_cmake_consumer.cpp
+    tests/req/error_exception_safety_tests.cpp
+    tests/req/error_location_exception_tests.cpp
+    tests/req/error_malformed_input_tests.cpp
+    tests/req/std_encoding_tests.cpp
+    tests/req/std_markup_constructs_tests.cpp
+    tests/req/std_xml10_conformance_tests.cpp)
   target_link_libraries(xmlparser_tests PRIVATE xmlparser::xmlparser
                                                 Catch2::Catch2WithMain)
   target_compile_features(xmlparser_tests PRIVATE cxx_std_17)
@@ -99,6 +107,9 @@ if(XMLPARSER_BUILD_TESTS)
 
   add_test(NAME xmlparser_bdd COMMAND xmlparser_tests "[bdd]")
   set_tests_properties(xmlparser_bdd PROPERTIES LABELS "bdd")
+
+  add_test(NAME xmlparser_req COMMAND xmlparser_tests "[req]")
+  set_tests_properties(xmlparser_req PROPERTIES LABELS "req;bdd")
 
   add_test(NAME xmlparser_e2e COMMAND xmlparser_tests "[e2e]")
   set_tests_properties(xmlparser_e2e PROPERTIES LABELS "e2e")

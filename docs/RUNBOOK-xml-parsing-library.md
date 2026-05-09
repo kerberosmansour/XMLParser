@@ -44,7 +44,7 @@
 | # | Milestone | Status | Started | Completed | Lessons File | Completion Summary |
 |---|---|---|---|---|---|---|
 | 1 | Project Skeleton, Public API Frame, And Conformance Harness | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m1.md` | `docs/slo/completion/xmlparser-m1.md` |
-| 2 | Encoding, Tokenizer, And XML 1.0 Well-Formed Parsing | `not_started` | | | `docs/slo/lessons/xmlparser-m2.md` | `docs/slo/completion/xmlparser-m2.md` |
+| 2 | Encoding, Tokenizer, And XML 1.0 Well-Formed Parsing | `in_progress` | 2026-05-09 | | `docs/slo/lessons/xmlparser-m2.md` | `docs/slo/completion/xmlparser-m2.md` |
 | 3 | Namespaces And Incremental SAX API | `not_started` | | | `docs/slo/lessons/xmlparser-m3.md` | `docs/slo/completion/xmlparser-m3.md` |
 | 4 | DOM Model, Mutation, Traversal, And Serialization | `not_started` | | | `docs/slo/lessons/xmlparser-m4.md` | `docs/slo/completion/xmlparser-m4.md` |
 | 5 | DTD Validation, XML 1.1, Coverage, And Release Packaging | `not_started` | | | `docs/slo/lessons/xmlparser-m5.md` | `docs/slo/completion/xmlparser-m5.md` |
@@ -290,13 +290,163 @@ The repository currently contains a minimal [README.md](../README.md), [LICENSE]
 
 ### Milestone 2 - Encoding, Tokenizer, And XML 1.0 Well-Formed Parsing
 
-**Status**: scope proposed; full contract must be authored after M1 is confirmed.
-
 **Goal**: Implement XML 1.0 well-formed parsing core, UTF-8/UTF-16 BOM handling, source locations, declarations, comments, CDATA, processing instructions, character data, predefined entities, and character references.
 
-**Primary requirements**: REQ-STD-01, REQ-STD-04, REQ-STD-05, REQ-ERR-02, REQ-ERR-05, REQ-ERR-06.
+**Context**: M1 established public headers, typed errors, CMake packaging, and placeholder parser behavior in `src/xmlparser.cpp`. M2 replaces the one-shot parser placeholders with a shared tokenizer/well-formedness core that can validate XML 1.0 documents and emit one-shot SAX-style events through the existing handler API. Incremental chunking, namespace resolution, DOM ownership, and DTD validation remain later milestones.
 
-**Planned abuse coverage**: malformed encodings, oversized tokens, excessive depth, empty/truncated/null-equivalent input, raw-payload-safe diagnostics.
+**Important design rule**: M2 must parse only enough public surface to prove the XML 1.0 core; it must not lock final DOM semantics or implement incremental SAX behavior ahead of M3.
+
+**Refactor budget**: `Limited internal parser-core refactor permitted`; behavior must be preserved by M1 tests before and after, and new parser behavior must be covered by M2 tests.
+
+#### Contract Block
+
+| Field | Value |
+|---|---|
+| Inputs | M1 public API skeleton, M1 lessons, XMLParser architecture/security docs, final requirements inventory |
+| Outputs | XML 1.0 one-shot parser core, UTF-8/UTF-16 decoder, markup/entity handling, source-location errors, requirement tests, docs updates |
+| Interfaces touched | `xmlparser::v1::parse(std::string_view)`, `xmlparser::v1::parse(std::string_view, SaxHandler&)`, `SaxParser::parse`, `XmlParseException`, `ErrorKind`, `ParserOptions` |
+| Files allowed to change | `CMakeLists.txt`, `include/xmlparser/*.h`, `src/*.cpp`, `src/*.h`, `tests/**`, `docs/RUNBOOK-xml-parsing-library.md`, `docs/slo/**`, `docs/requirements-traceability.md`, `ARCHITECTURE.md`, `README.md` |
+| Files to read before changing anything | `docs/slo/lessons/xmlparser-m1.md`, `ARCHITECTURE.md`, `SECURITY.md`, `docs/slo/design/xml-parsing-library-interfaces.md`, `docs/slo/design/xml-parsing-library-threat-model.md`, `tests/bdd_m1_public_api.cpp`, `src/xmlparser.cpp` |
+| New files allowed | `src/parser_core.*`, `tests/req/**`, `docs/slo/verify/xmlparser-m2.md`, `docs/slo/lessons/xmlparser-m2.md`, `docs/slo/completion/xmlparser-m2.md` |
+| New dependencies allowed | none |
+| Migration allowed | no |
+| Compatibility commitments | Existing public headers continue to compile as C++17; installed CMake consumer still works; M1 unsupported-parser expectation is updated because M2 now implements one-shot parsing |
+| Resource bounds introduced/changed | Enforce `max_document_bytes`, `max_depth`, `max_token_bytes`, `max_attributes_per_element`, and `max_entity_expansions` during parse |
+| Invariants/assertions required | byte offsets are monotonic; line/column start at 1; start/end tags balance; exactly one document element exists; empty/truncated/malformed inputs throw typed errors; diagnostics omit raw XML payload |
+| Debugger / inspection expectation | README debugger command remains valid for parser-core tests |
+| Static analysis gates | CMake configure/build, `ctest`, formatter placeholder, lint placeholder |
+| Exemplar code to copy | M1 public API/test style in `include/xmlparser/*.h`, `tests/bdd_m1_public_api.cpp`, and `tests/e2e_m1_cmake_consumer.cpp` |
+| Anti-exemplar code not to copy | Do not copy implementation code from Xerces-C++, Expat, libxml2, pugixml, TinyXML-2, or W3C fixtures |
+| Refactoring discipline | Apply behavior-preserving microsteps with pre-test and post-test proof per `/slo-plan` refactoring discipline; internal parser extraction is allowed only to satisfy M2 |
+| AI tolerance contract | N/A - no AI component |
+| Data classification | Public |
+| Proactive controls in play | OWASP C1 Define Security Requirements; C5 Validate All Inputs; C10 Handle All Errors and Exceptions |
+| Abuse acceptance scenarios | `tm-xml-parsing-library-abuse-1`, `tm-xml-parsing-library-abuse-2`, `tm-xml-parsing-library-abuse-3`, `tm-xml-parsing-library-abuse-22`, `tm-xml-parsing-library-abuse-24` covered by malformed encoding, resource-limit, payload-safe diagnostics, and provenance tests |
+
+#### Out Of Scope / Must Not Do
+
+- Do not implement namespace resolution or duplicate expanded-name checks.
+- Do not implement incremental `SaxParser::feed` or arbitrary chunk-boundary behavior.
+- Do not implement final DOM tree ownership, mutation, traversal, or serialization.
+- Do not implement DTD validation, custom entity declarations, external DTD resolution, XML Schema, XPath, XQuery, or XSLT.
+- Do not vendor W3C fixtures in M2.
+
+#### Files Allowed To Change
+
+| File | Planned Change |
+|---|---|
+| `CMakeLists.txt` | Register M2 requirement tests and CTest labels |
+| `include/xmlparser/*.h` | Narrow public API adjustments for parser results/errors if tests require them |
+| `src/xmlparser.cpp` | Route public one-shot parse APIs to parser core |
+| `src/parser_core.*` | NEW: UTF decoder and XML 1.0 tokenizer/well-formedness core |
+| `tests/bdd_m1_public_api.cpp` | Update M1 placeholder expectation for post-M2 parse behavior |
+| `tests/req/**` | NEW: M2 requirement tests for XML 1.0, encodings, markup constructs, locations, and malformed input |
+| `docs/requirements-traceability.md` | Add M2 requirement coverage |
+| `ARCHITECTURE.md` | Add parser-core implementation detail if file layout differs |
+| `README.md` | Add basic parsing and typed error examples |
+| `docs/RUNBOOK-xml-parsing-library.md` | Control artifact: tracker and M2 evidence updates |
+| `docs/slo/verify/xmlparser-m2.md` | NEW after verification |
+| `docs/slo/lessons/xmlparser-m2.md` | NEW after milestone completion |
+| `docs/slo/completion/xmlparser-m2.md` | NEW after milestone completion |
+
+#### Step By Step
+
+1. Confirm baseline tests are green and record repo hygiene.
+2. Write M2 requirement tests first under `tests/req/**`.
+3. Run M2 tests and confirm they fail against M1 unsupported parser behavior.
+4. Add internal parser core with UTF-8/UTF-16 BOM detection and XML 1.0 tokenizer states.
+5. Wire public one-shot parse APIs to the parser core while leaving incremental feed unsupported.
+6. Enforce resource limits and typed source-location errors.
+7. Update M1 tests, traceability docs, README, and architecture notes.
+8. Run build, BDD, requirement, E2E, full test, format, lint, and cleanup checks.
+9. Write verification report, lessons, and completion summary.
+
+#### BDD Acceptance Scenarios
+
+**Feature: XML 1.0 well-formed parser core**
+
+| Scenario | Category | Given | When | Then |
+|---|---|---|---|---|
+| M2 accepts simple XML 1.0 document | happy path | `<root><child attr="value">text</child></root>` | one-shot parse is invoked | parse succeeds and emits balanced document/element/text events |
+| M2 parses XML declaration | happy path | `<?xml version="1.0" encoding="UTF-8"?><root/>` | one-shot parse is invoked | parse succeeds and records XML 1.0 declaration handling |
+| M2 detects UTF-8 BOM | compatibility | UTF-8 BOM precedes `<root/>` | parse is invoked | parse succeeds with root at byte offset after the BOM |
+| M2 detects UTF-16LE and UTF-16BE BOM | compatibility | UTF-16 encoded `<root/>` with BOM | parse is invoked | parse succeeds for both byte orders |
+| M2 rejects malformed UTF-8 | invalid input / abuse `tm-xml-parsing-library-abuse-2` | input contains a truncated multibyte sequence | parse is invoked | `XmlParseException` has `ErrorKind::Encoding` and the failing byte offset |
+| M2 handles comments, CDATA, and PIs | happy path | a document contains `<?pi?>`, `<!--comment-->`, and `<![CDATA[x<y]]>` | SAX parse is invoked | handler observes PI, comment, CDATA, and character events |
+| M2 resolves predefined and character entities | happy path | text and attributes include `&lt;`, `&amp;`, `&quot;`, `&#65;`, and `&#x41;` | parse is invoked | handler receives decoded values |
+| M2 rejects mismatched tags | invalid input | `<root><child></root>` | parse is invoked | typed well-formedness error includes line, column, and byte offset |
+| M2 rejects truncated input | empty/degraded state | `<root><child>` or unfinished CDATA is provided | parse is invoked | typed well-formedness error is returned, not a crash |
+| M2 enforces resource limits | abuse `tm-xml-parsing-library-abuse-1` | parser options set a tiny depth or token limit | parse is invoked | `ErrorKind::ResourceLimit` is thrown before unbounded growth |
+| M2 diagnostics omit raw XML | abuse `tm-xml-parsing-library-abuse-3` | malformed XML contains secret-looking text | parse fails | error message omits the raw XML payload and secret substrings |
+| M2 keeps fixture provenance gate closed | dependency/provenance abuse `tm-xml-parsing-library-abuse-22` | W3C fixtures are still not vendored | tests read docs | provenance docs still require source, license, hash, and import gate |
+
+#### Regression Tests
+
+- `ctest --test-dir build --output-on-failure` must pass.
+- M1 BDD and E2E tests must still pass after M2 behavior changes.
+- Requirement tests under `tests/req/**` must pass with `req` CTest label.
+
+#### Compatibility Checklist
+
+- [ ] Public API remains in `xmlparser::v1`.
+- [ ] `<xmlparser/xmlparser.h>` compiles as C++17.
+- [ ] Install-tree consumer still works.
+- [ ] `SaxParser::feed` and `finish` remain visibly unsupported until M3.
+- [ ] No runtime dependency is introduced.
+- [ ] Raw XML payloads remain absent from default diagnostics.
+
+#### E2E Runtime Validation
+
+**File**: `tests/e2e_m1_cmake_consumer.cpp` plus M2 requirement runtime tests.
+
+| E2E Test | What It Proves | Pass Criteria |
+|---|---|---|
+| `m1_install_tree_consumer_can_find_package` | Installed package still works after parser implementation | temp project configures, builds, links, and runs |
+| `REQ_STD_04_detects_utf16le_bom` / `REQ_STD_04_detects_utf16be_bom` | Runtime parser handles UTF-16 byte-order input | both parse successfully |
+| `REQ_ERR_02_exception_contains_message_line_column_and_byte_offset` | Runtime diagnostics include actionable location metadata | expected line, column, and byte offset match |
+
+#### Smoke Tests
+
+- [ ] `cmake -S . -B build -DXMLPARSER_BUILD_TESTS=ON` configures.
+- [ ] `cmake --build build` passes.
+- [ ] `ctest --test-dir build --output-on-failure` passes.
+- [ ] `ctest --test-dir build --output-on-failure -L req` passes.
+- [ ] `ctest --test-dir build --output-on-failure -L e2e` passes.
+- [ ] `cmake --build build --target format` passes or documents absence.
+- [ ] `cmake --build build --target lint` passes or documents absence.
+- [ ] `git status` shows no generated artifact residue except intentional source/docs.
+
+#### Evidence Log
+
+| Step | Command / Check | Expected Result | Actual Result | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| Repo hygiene | `git status --short --branch`; `git rev-parse --abbrev-ref HEAD`; `git symbolic-ref --short refs/remotes/origin/HEAD`; `git switch -c slo/xml-parsing-library-m2` | execution occurs on a task branch with existing work preserved | Before: `slo/xml-parsing-library-m1` with completed M1 work; after: `slo/xml-parsing-library-m2`; default: `origin/main`; dirty tree preserved. | Pass | `gh issue list --label retro-derived --search "xmlparser" --state open --json number,title,body,url` returned `[]`. |
+| Prior lessons | read `docs/slo/lessons/xmlparser-m1.md` | M1 rules applied | M1 rules applied: no parallel E2E install-tree runs; avoid CMake echo semicolons; preserve empty-input/payload-safe diagnostics; update runbook allow-list for control edits. | Pass | M2 contract explicitly lists `docs/RUNBOOK-xml-parsing-library.md` as a control artifact. |
+| Baseline tests | `ctest --test-dir build --output-on-failure` | green | Passed 2 of 2 tests in 1.22s before M2 code changes. | Pass | M1 baseline green. |
+| BDD/REQ tests created | `tests/req/**` | fail for expected unsupported parser behavior before implementation | | | |
+| Implementation | parser core files | contract satisfied | | | |
+| Formatter | `cmake --build build --target format` | clean or documented target absence | | | |
+| Typecheck / build check | `cmake --build build` | clean | | | |
+| Static analyzer / linter | `cmake --build build --target lint` | clean or documented target absence | | | |
+| Dependency audit | no new runtime deps | pass | | | |
+| Full tests | `ctest --test-dir build --output-on-failure` | green | | | |
+| Requirement tests | `ctest --test-dir build --output-on-failure -L req` | green | | | |
+| E2E runtime | `ctest --test-dir build --output-on-failure -L e2e` | green | | | |
+| Resource-bound verification | depth/token/entity tests | typed resource-limit errors | | | |
+| Error-location verification | location tests | line/column/byte offset correct | | | |
+| Payload-safe diagnostics | secret-looking malformed XML test | no raw payload leakage | | | |
+| Test artifact cleanup | `git status` | no generated artifact residue | | | |
+| Compatibility checks | include/link/install tests | no regressions | | | |
+
+#### Definition Of Done
+
+- All listed M2 scenarios pass.
+- M1 BDD and E2E tests still pass.
+- UTF-8, UTF-16LE, and UTF-16BE BOM paths are covered.
+- Malformed encoding, malformed markup, empty input, truncated input, and resource limits return typed errors with locations where applicable.
+- No raw XML payload appears in default diagnostics.
+- Incremental parsing remains unsupported until M3.
+- Requirement traceability, README, verification report, lessons, completion summary, and milestone tracker are updated.
 
 ---
 
