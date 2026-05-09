@@ -28,6 +28,9 @@ Before import, complete all rows:
 
 ## Import Gate
 
+This import gate remains intentionally closed for full upstream fixture payloads
+until the evidence below is complete.
+
 Full upstream fixture import remains blocked until a future milestone records:
 
 1. Exact source URL and release identifier.
