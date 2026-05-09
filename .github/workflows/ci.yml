@@ -1,0 +1,67 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    name: ${{ matrix.os }}-${{ matrix.compiler }}-${{ matrix.linkage }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            compiler: gcc
+            cxx: g++
+            linkage: static
+          - os: ubuntu-latest
+            compiler: clang
+            cxx: clang++
+            linkage: shared
+          - os: macos-latest
+            compiler: apple-clang
+            cxx: clang++
+            linkage: static
+          - os: windows-latest
+            compiler: msvc
+            cxx: cl
+            linkage: shared
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        shell: bash
+        run: |
+          if [ "${{ matrix.linkage }}" = "shared" ]; then
+            shared=ON
+          else
+            shared=OFF
+          fi
+          cmake -S . -B build \
+            -DXMLPARSER_BUILD_TESTS=ON \
+            -DBUILD_SHARED_LIBS=${shared} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test all
+        run: ctest --test-dir build --output-on-failure -C Release
+
+      - name: Test requirements
+        run: ctest --test-dir build --output-on-failure -L req -C Release
+
+      - name: Test e2e
+        run: ctest --test-dir build --output-on-failure -L e2e -C Release
+
+  coverage:
+    name: coverage
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parser-core coverage
+        run: cmake -DXMLPARSER_SOURCE_DIR="$PWD" -P tests/coverage/parser_core_coverage.cmake

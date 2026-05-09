@@ -30,3 +30,27 @@
 *.exe
 *.out
 *.app
+
+# CMake build trees and generated metadata
+/build/
+/cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+DartConfiguration.tcl
+Testing/
+_deps/
+
+# Coverage and sanitizer output
+/coverage/
+*.gcda
+*.gcno
+*.profraw
+*.profdata
+*.sancov
+
+# Local test scratch artifacts
+/test-results/
+/artifacts/
