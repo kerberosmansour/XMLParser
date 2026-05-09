@@ -46,7 +46,7 @@
 | 1 | Project Skeleton, Public API Frame, And Conformance Harness | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m1.md` | `docs/slo/completion/xmlparser-m1.md` |
 | 2 | Encoding, Tokenizer, And XML 1.0 Well-Formed Parsing | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m2.md` | `docs/slo/completion/xmlparser-m2.md` |
 | 3 | Namespaces And Incremental SAX API | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m3.md` | `docs/slo/completion/xmlparser-m3.md` |
-| 4 | DOM Model, Mutation, Traversal, And Serialization | `not_started` | | | `docs/slo/lessons/xmlparser-m4.md` | `docs/slo/completion/xmlparser-m4.md` |
+| 4 | DOM Model, Mutation, Traversal, And Serialization | `in_progress` | 2026-05-09 | | `docs/slo/lessons/xmlparser-m4.md` | `docs/slo/completion/xmlparser-m4.md` |
 | 5 | DTD Validation, XML 1.1, Coverage, And Release Packaging | `not_started` | | | `docs/slo/lessons/xmlparser-m5.md` | `docs/slo/completion/xmlparser-m5.md` |
 
 Status values: `not_started | in_progress | blocked | done`.
@@ -615,13 +615,161 @@ The repository currently contains a minimal [README.md](../README.md), [LICENSE]
 
 ### Milestone 4 - DOM Model, Mutation, Traversal, And Serialization
 
-**Status**: scope proposed; full contract must be authored after M3 is confirmed.
-
 **Goal**: Add DOM tree construction, mutation APIs, traversal, namespace-aware and unaware attribute access, and serialization to string/stream.
 
-**Primary requirements**: REQ-DOM-01 through REQ-DOM-05, REQ-ERR-05.
+**Context**: M3 added namespace-aware SAX event semantics and bounded incremental parsing over the shared parser core. M4 uses those same event semantics to build a document-owned DOM tree, exposes minimal mutation/traversal APIs, and serializes DOM content back to XML. DTD validation, XML 1.1 character-rule completion, and release packaging remain M5 scope.
 
-**Planned abuse coverage**: DOM ownership cycles, node-count/depth limits, failed stream writes, namespace declaration preservation, exception-safe mutation rollback.
+**Important design rule**: DOM construction must consume the same namespace-aware parser events used by SAX; it must not fork parser behavior or re-resolve names independently.
+
+**Refactor budget**: `Limited DOM/public API extension permitted`; parser-core behavior must remain covered by M1-M3 tests.
+
+#### Contract Block
+
+| Field | Value |
+|---|---|
+| Inputs | M3 parser/SAX core, M3 lessons, DOM interface lock, serializer requirements |
+| Outputs | Document-owned DOM tree, node creation/mutation/traversal APIs, namespace-aware attribute APIs, string/stream serializer, requirement tests, docs updates |
+| Interfaces touched | `Document`, `Node`, `Element`, `Attribute`, `Text`, `Comment`, `ProcessingInstruction`, `CDataSection`, `parse(std::string_view)`, `serialize(...)` |
+| Files allowed to change | `CMakeLists.txt`, `include/xmlparser/*.h`, `src/*.cpp`, `src/*.h`, `tests/**`, `docs/RUNBOOK-xml-parsing-library.md`, `docs/slo/**`, `docs/requirements-traceability.md`, `ARCHITECTURE.md`, `README.md` |
+| Files to read before changing anything | `docs/slo/lessons/xmlparser-m3.md`, `ARCHITECTURE.md`, `SECURITY.md`, `docs/slo/design/xml-parsing-library-interfaces.md`, `docs/slo/design/xml-parsing-library-threat-model.md`, `include/xmlparser/dom.h`, `include/xmlparser/serializer.h`, `src/xmlparser.cpp`, `src/parser_core.cpp` |
+| New files allowed | `src/dom.cpp`, `tests/req/dom_model_tests.cpp`, `tests/req/dom_mutation_tests.cpp`, `tests/req/dom_traversal_tests.cpp`, `tests/req/dom_serialization_tests.cpp`, `tests/req/dom_attribute_access_tests.cpp`, `docs/slo/verify/xmlparser-m4.md`, `docs/slo/lessons/xmlparser-m4.md`, `docs/slo/completion/xmlparser-m4.md` |
+| New dependencies allowed | none |
+| Migration allowed | no |
+| Compatibility commitments | M1-M3 tests still pass; public API remains in `xmlparser::v1`; install-tree consumer still works |
+| Resource bounds introduced/changed | DOM parse enforces `ParserOptions::max_dom_nodes`; DOM mutation rejects cycles and cross-document insertion |
+| Invariants/assertions required | every node has at most one parent; every node belongs to one owning `Document`; document has at most one document element; traversal order is document order; serializer escapes text/attributes |
+| Debugger / inspection expectation | README debugger command remains valid for DOM tests |
+| Static analysis gates | CMake configure/build, `ctest`, formatter placeholder, lint placeholder |
+| Exemplar code to copy | M3 SAX event semantics and `RecordingHandler` event tests; M2/M3 typed error style |
+| Anti-exemplar code not to copy | Do not implement a second parser for DOM; do not copy implementation code from competitor XML projects |
+| Refactoring discipline | Behavior-preserving microsteps with pre-test and post-test proof; M1-M3 tests must stay green |
+| AI tolerance contract | N/A - no AI component |
+| Data classification | Public |
+| Proactive controls in play | OWASP C1 Define Security Requirements; C5 Validate All Inputs; C10 Handle All Errors and Exceptions |
+| Abuse acceptance scenarios | `tm-xml-parsing-library-abuse-10`, `tm-xml-parsing-library-abuse-11`, `tm-xml-parsing-library-abuse-12`, `tm-xml-parsing-library-abuse-13`, `tm-xml-parsing-library-abuse-14`, `tm-xml-parsing-library-abuse-15` covered by cycle, ownership, namespace-attribute, stream-failure, escaping, and namespace serialization tests |
+
+#### Out Of Scope / Must Not Do
+
+- Do not implement DTD validation, external resolver behavior, XML Schema, XPath, XQuery, or XSLT.
+- Do not vendor W3C fixtures.
+- Do not implement a separate DOM parser path.
+- Do not implement full XML 1.1 behavior.
+- Do not introduce runtime dependencies.
+
+#### Files Allowed To Change
+
+| File | Planned Change |
+|---|---|
+| `CMakeLists.txt` | Register M4 DOM tests and new DOM source file |
+| `include/xmlparser/dom.h` | Add DOM ownership, mutation, traversal, and attribute APIs |
+| `include/xmlparser/serializer.h` | Keep serializer public surface stable |
+| `src/xmlparser.cpp` | Wire `parse(std::string_view)` to DOM builder and serializer entry points to implementation |
+| `src/dom.cpp` | NEW: DOM storage, builder, mutation, traversal, serializer |
+| `tests/req/**` | NEW: DOM model, mutation, traversal, serialization, and attribute tests |
+| `docs/requirements-traceability.md` | Add M4 requirement coverage |
+| `ARCHITECTURE.md` | Add DOM/serializer implementation notes |
+| `README.md` | Add DOM parse/mutation/serialization examples |
+| `docs/RUNBOOK-xml-parsing-library.md` | Control artifact: tracker and M4 evidence updates |
+| `docs/slo/verify/xmlparser-m4.md` | NEW after verification |
+| `docs/slo/lessons/xmlparser-m4.md` | NEW after milestone completion |
+| `docs/slo/completion/xmlparser-m4.md` | NEW after milestone completion |
+
+#### Step By Step
+
+1. Confirm baseline tests are green and record repo hygiene.
+2. Write M4 requirement tests first under `tests/req/**`.
+3. Run M4 tests and confirm they fail against placeholder DOM/serializer behavior.
+4. Implement document-owned DOM storage and parser event builder.
+5. Implement mutation/traversal and namespace-aware attribute APIs.
+6. Implement string and stream serialization with XML escaping and stream failure reporting.
+7. Update traceability docs, README, and architecture notes.
+8. Run build, BDD, requirement, E2E, full test, format, lint, and cleanup checks.
+9. Write verification report, lessons, and completion summary.
+
+#### BDD Acceptance Scenarios
+
+**Feature: DOM tree, mutation, traversal, and serialization**
+
+| Scenario | Category | Given | When | Then |
+|---|---|---|---|---|
+| M4 builds DOM node types from parse | happy path | XML includes element, attribute, text, comment, PI, and CDATA | `parse` returns a `Document` | node type identity and document element are preserved |
+| M4 creates and mutates nodes | happy path | a blank `Document` creates elements/text | caller appends, modifies, and removes nodes | tree reflects the mutation |
+| M4 rejects cycle-creating insertion | abuse `tm-xml-parsing-library-abuse-10` | caller tries to append an ancestor under its descendant | mutation runs | typed parse exception is thrown and tree remains unchanged |
+| M4 rejects cross-document insertion | abuse `tm-xml-parsing-library-abuse-11` | caller moves a node from another `Document` | mutation runs | typed parse exception is thrown |
+| M4 traverses parent/children/siblings | happy path | a parsed nested document | caller asks for parent/children/siblings | expected relationships are returned |
+| M4 depth-first iterator visits document order | happy path | a parsed nested document | caller requests depth-first nodes | document order is returned |
+| M4 serializes to string | happy path | DOM contains text needing escaping | `serialize(document)` runs | XML output is well-formed and escaped |
+| M4 serializes to stream and reports failure | invalid output sink / abuse `tm-xml-parsing-library-abuse-13` | stream is already failed | stream serializer runs | typed I/O error is thrown |
+| M4 preserves namespace declarations in output | compatibility / abuse `tm-xml-parsing-library-abuse-15` | parsed namespace-aware DOM | serializer runs | output contains needed `xmlns` declarations and qualified names |
+| M4 attribute access supports qname and namespace | happy path | element has `plain` and `p:code` attributes | caller uses `get_attribute` and `get_attribute_ns` | values are distinct and correct |
+| M4 serializer escapes markup-sensitive text | abuse `tm-xml-parsing-library-abuse-14` | text contains `<`, `>`, and `&` | serializer runs | escaped output does not inject markup |
+
+#### Regression Tests
+
+- `ctest --test-dir build --output-on-failure` must pass.
+- M1-M3 BDD, E2E, and requirement tests must still pass.
+- M4 requirement tests under `tests/req/**` must pass with `req` CTest label.
+
+#### Compatibility Checklist
+
+- [ ] Public API remains in `xmlparser::v1`.
+- [ ] `<xmlparser/xmlparser.h>` compiles as C++17.
+- [ ] One-shot and incremental SAX behavior from M2/M3 remains stable.
+- [ ] Install-tree consumer still works.
+- [ ] No runtime dependency is introduced.
+- [ ] Raw XML payloads remain absent from default diagnostics.
+
+#### E2E Runtime Validation
+
+**File**: M4 requirement tests plus existing install-tree consumer.
+
+| E2E Test | What It Proves | Pass Criteria |
+|---|---|---|
+| `m1_install_tree_consumer_can_find_package` | Installed package still works after DOM changes | temp project configures, builds, links, and runs |
+| `REQ_DOM_01_builds_document_element_attribute_text_comment_pi_cdata_nodes` | Runtime parser builds DOM from real XML | all expected node types observed |
+| `REQ_DOM_04_serializes_to_string` | Runtime serializer emits well-formed XML | output matches expected escaped XML |
+| `REQ_DOM_02_rejects_cycle_creating_insert` | Mutation invariant is enforced | typed error and unchanged tree |
+
+#### Smoke Tests
+
+- [ ] `cmake -S . -B build -DXMLPARSER_BUILD_TESTS=ON` configures.
+- [ ] `cmake --build build` passes.
+- [ ] `ctest --test-dir build --output-on-failure` passes.
+- [ ] `ctest --test-dir build --output-on-failure -L req` passes.
+- [ ] `ctest --test-dir build --output-on-failure -L e2e` passes.
+- [ ] `cmake --build build --target format` passes or documents absence.
+- [ ] `cmake --build build --target lint` passes or documents absence.
+- [ ] `git status` shows no generated artifact residue except intentional source/docs.
+
+#### Evidence Log
+
+| Step | Command / Check | Expected Result | Actual Result | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| Repo hygiene | `git status --short --branch`; `git rev-parse --abbrev-ref HEAD`; `git symbolic-ref --short refs/remotes/origin/HEAD`; `git switch -c slo/xml-parsing-library-m4` | execution occurs on a task branch with existing work preserved | Before: `slo/xml-parsing-library-m3`; after: `slo/xml-parsing-library-m4`; default: `origin/main`; dirty tree contains only the M4 contract edit. | Pass | `gh issue list --label retro-derived --search "xmlparser" --state open --json number,title,body,url` returned `[]`. |
+| Prior lessons | read `docs/slo/lessons/xmlparser-m3.md` | M3 rules applied | M3 rules applied: DOM consumes namespace-aware SAX semantics; attribute APIs preserve qname/local/URI; serializer treats namespace declarations specially; incremental SAX tests stay green; tests avoid brittle event indices. | Pass | Contract includes these rules. |
+| Baseline tests | `ctest --test-dir build --output-on-failure` | green | Passed 4 of 4 tests in 1.49s before M4 code changes. | Pass | M3 baseline green. |
+| BDD/REQ tests created | `tests/req/**` | fail for expected placeholder DOM/serializer behavior before implementation | | | |
+| Implementation | DOM and serializer files | contract satisfied | | | |
+| Formatter | `cmake --build build --target format` | clean or documented target absence | | | |
+| Typecheck / build check | `cmake --build build` | clean | | | |
+| Static analyzer / linter | `cmake --build build --target lint` | clean or documented target absence | | | |
+| Dependency audit | no new runtime deps | pass | | | |
+| Full tests | `ctest --test-dir build --output-on-failure` | green | | | |
+| Requirement tests | `ctest --test-dir build --output-on-failure -L req` | green | | | |
+| E2E runtime | `ctest --test-dir build --output-on-failure -L e2e` | green | | | |
+| DOM invariant verification | mutation/traversal tests | ownership and cycle invariants hold | | | |
+| Serialization verification | serializer tests | escaping, namespace declarations, stream failure handled | | | |
+| Test artifact cleanup | `git status` | no generated artifact residue | | | |
+| Compatibility checks | include/link/install tests | no regressions | | | |
+
+#### Definition Of Done
+
+- All listed M4 scenarios pass.
+- M1-M3 tests still pass.
+- DOM node type identity, mutation, traversal, attribute access, and serialization work through public APIs.
+- Serializer escapes text/attributes and reports stream failure.
+- DOM mutation prevents cycles and cross-document ownership violations.
+- Requirement traceability, README, verification report, lessons, completion summary, and milestone tracker are updated.
 
 ---
 
