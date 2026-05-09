@@ -1,5 +1,7 @@
 #include <xmlparser/xmlparser.h>
 
+#include "parser_core.h"
+
 #include <ostream>
 #include <string>
 #include <string_view>
@@ -19,7 +21,7 @@ XmlParseException empty_input_error() {
 
 XmlParseException unsupported_parser_error() {
   return XmlParseException(ErrorKind::Unsupported, start_location(),
-                           "XML parsing is not implemented until milestone M2");
+                           "incremental XML parsing is not implemented until milestone M3");
 }
 
 XmlParseException unsupported_serializer_error() {
@@ -54,18 +56,15 @@ SourceLocation XmlValidityException::location() const noexcept {
   return location_;
 }
 
-Document parse(std::string_view xml, const ParserOptions&) {
-  if (xml.empty()) {
-    throw empty_input_error();
-  }
-  throw unsupported_parser_error();
+Document parse(std::string_view xml, const ParserOptions& options) {
+  class NullHandler : public SaxHandler {};
+  NullHandler handler;
+  detail::parse_xml_document(xml, handler, options);
+  return Document{};
 }
 
-void parse(std::string_view xml, SaxHandler&, const ParserOptions&) {
-  if (xml.empty()) {
-    throw empty_input_error();
-  }
-  throw unsupported_parser_error();
+void parse(std::string_view xml, SaxHandler& handler, const ParserOptions& options) {
+  detail::parse_xml_document(xml, handler, options);
 }
 
 SaxParser::SaxParser(SaxHandler& handler, ParserOptions options)

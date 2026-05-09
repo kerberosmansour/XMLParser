@@ -17,7 +17,7 @@ endif()
 option(XMLPARSER_BUILD_TESTS "Build XMLParser tests"
        ${XMLPARSER_DEFAULT_BUILD_TESTS})
 
-add_library(xmlparser src/xmlparser.cpp)
+add_library(xmlparser src/xmlparser.cpp src/parser_core.cpp)
 add_library(xmlparser::xmlparser ALIAS xmlparser)
 
 set_target_properties(
@@ -110,6 +110,9 @@ if(XMLPARSER_BUILD_TESTS)
 
   add_test(NAME xmlparser_req COMMAND xmlparser_tests "[req]")
   set_tests_properties(xmlparser_req PROPERTIES LABELS "req;bdd")
+
+  add_test(NAME xmlparser_req_conformance COMMAND xmlparser_tests "[conformance]")
+  set_tests_properties(xmlparser_req_conformance PROPERTIES LABELS "req;conformance")
 
   add_test(NAME xmlparser_e2e COMMAND xmlparser_tests "[e2e]")
   set_tests_properties(xmlparser_e2e PROPERTIES LABELS "e2e")

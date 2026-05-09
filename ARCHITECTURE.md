@@ -60,6 +60,19 @@ Caller application
 | Serializer | Writes DOM back to well-formed XML while preserving namespace declarations and selected encoding behavior. | New | M4 | `serialize(Document, SerializeOptions)` |
 | Test and conformance harness | Maps fixtures and tests to every `REQ-*` item and enforces coverage. | New | M1-M5 | Catch2 tests, CTest, coverage target |
 
+## Current Implementation Notes
+
+Milestone 2 introduces `src/parser_core.cpp` as the shared one-shot XML 1.0
+well-formedness core. The core decodes UTF-8, UTF-8 BOM, UTF-16LE BOM, and
+UTF-16BE BOM input into code points with byte-offset source locations, then
+drives the existing public `SaxHandler` callbacks for document, element,
+character, processing-instruction, comment, and CDATA events.
+
+The implemented M2 path enforces configured document byte, element depth, token
+length, attribute count, and entity expansion limits. Namespace resolution,
+incremental chunk carryover, final DOM ownership, serializer behavior, XML 1.1,
+DTD validation, and external resolver behavior remain planned components.
+
 ## Data Flow Summary
 
 | Flow | From | To | Mechanism | Bounded? | Failure Mode | Milestone |

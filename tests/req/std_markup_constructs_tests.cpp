@@ -21,6 +21,17 @@ TEST_CASE("REQ_STD_05_emits_processing_instruction",
   REQUIRE(has_event(handler, "processing_instruction", "do-it"));
 }
 
+TEST_CASE("REQ_STD_05_allows_xml_stylesheet_processing_instruction",
+          "[req][bdd][m2][REQ-STD-05]") {
+  RecordingHandler handler;
+
+  xmlparser::v1::parse("<?xml-stylesheet href=\"style.css\"?><root/>", handler);
+
+  REQUIRE(handler.events[1].type == "processing_instruction");
+  REQUIRE(handler.events[1].name == "xml-stylesheet");
+  REQUIRE(handler.events[1].value == "href=\"style.css\"");
+}
+
 TEST_CASE("REQ_STD_05_preserves_cdata_boundaries_in_events",
           "[req][bdd][m2][REQ-STD-05]") {
   RecordingHandler handler;

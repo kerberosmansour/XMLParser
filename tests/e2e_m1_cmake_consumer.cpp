@@ -145,9 +145,9 @@ SCENARIO("M1 install tree consumer can find package", "[e2e][m1][REQ-PLAT-03]") 
                  "  try {\n"
                  "    (void)xmlparser::v1::parse(\"<root/>\");\n"
                  "  } catch (const xmlparser::v1::XmlParseException& error) {\n"
-                 "    return error.kind() == xmlparser::v1::ErrorKind::Unsupported ? 0 : 2;\n"
+                 "    return 2;\n"
                  "  }\n"
-                 "  return 3;\n"
+                 "  return 0;\n"
                  "}\n");
 
       run_command(std::string(CMAKE_COMMAND) + " -S " + quote(consumer_source) + " -B " +

@@ -37,19 +37,13 @@ SCENARIO("M1 API include compiles", "[bdd][m1][REQ-API-01]") {
   }
 }
 
-SCENARIO("M1 unsupported parser is visible", "[bdd][m1][REQ-ERR-01]") {
-  GIVEN("the skeleton parse API receives <root/> before M2") {
+SCENARIO("M1 parser API remains visible after M2", "[bdd][m1][REQ-ERR-01]") {
+  GIVEN("the one-shot parse API receives <root/> after M2") {
     const std::string xml = "<root/>";
 
     WHEN("the caller invokes parse") {
-      THEN("it throws a typed exception indicating unsupported implementation") {
-        try {
-          (void)xmlparser::v1::parse(xml);
-          FAIL("skeleton parser unexpectedly accepted XML before M2");
-        } catch (const xmlparser::v1::XmlParseException& error) {
-          REQUIRE(error.kind() == xmlparser::v1::ErrorKind::Unsupported);
-          REQUIRE(contains(error.what(), "not implemented"));
-        }
+      THEN("the public parser entry point remains callable") {
+        REQUIRE_NOTHROW((void)xmlparser::v1::parse(xml));
       }
     }
   }
@@ -101,13 +95,13 @@ SCENARIO("M1 options are bounded", "[bdd][m1][REQ-API-02][REQ-SEC-01]") {
 SCENARIO("M1 raw XML is not logged", "[bdd][m1][REQ-ERR-03][REQ-SEC-02]") {
   GIVEN("input contains secret-looking XML text") {
     const std::string xml =
-        "<root><password>hunter2</password><token>secret-token</token></root>";
+        "<root><password>hunter2</password><token>secret-token</root>";
 
-    WHEN("parse fails in skeleton mode") {
+    WHEN("parse fails") {
       THEN("the error message omits the raw XML payload") {
         try {
           (void)xmlparser::v1::parse(xml);
-          FAIL("skeleton parser unexpectedly accepted XML before M2");
+          FAIL("malformed XML was unexpectedly accepted");
         } catch (const xmlparser::v1::XmlParseException& error) {
           const std::string message = error.what();
           REQUIRE_FALSE(contains(message, xml));

@@ -1,9 +1,10 @@
 # XMLParser
 
 XMLParser is a C++17 XML parsing library under active SLO-driven
-development. The current milestone provides the build, packaging, test
-harness, and public API frame. Full XML tokenization, SAX, DOM, namespace, and
-DTD behavior lands in later milestones.
+development. The current milestone provides a one-shot XML 1.0 well-formedness
+parser with UTF-8/UTF-16 BOM handling, source-location diagnostics, and
+SAX-style event callbacks. Incremental SAX, namespaces, DOM ownership,
+serialization, XML 1.1, and DTD validation land in later milestones.
 
 ## Build
 
@@ -58,15 +59,47 @@ int main() {
   try {
     (void)xmlparser::v1::parse("<root/>", options);
   } catch (const xmlparser::v1::XmlParseException& error) {
-    return error.kind() == xmlparser::v1::ErrorKind::Unsupported ? 0 : 1;
+    return 1;
   }
 
-  return 1;
+  return 0;
 }
 ```
 
-In M1, parse and serialize entry points throw typed unsupported errors instead
-of accepting XML. Empty input is a separate typed error path.
+The one-shot parser accepts well-formed XML 1.0 and reports malformed input
+through `XmlParseException` with `ErrorKind`, line, column, and byte offset.
+Error messages omit raw XML payloads by default.
+
+## SAX-Style Events
+
+```cpp
+#include <xmlparser/xmlparser.h>
+
+#include <string_view>
+#include <vector>
+
+class Handler : public xmlparser::v1::SaxHandler {
+ public:
+  void start_element(
+      const xmlparser::v1::QualifiedName& name,
+      const std::vector<xmlparser::v1::AttributeView>& attributes) override {
+    (void)name;
+    (void)attributes;
+  }
+
+  void characters(std::string_view text) override {
+    (void)text;
+  }
+};
+
+int main() {
+  Handler handler;
+  xmlparser::v1::parse("<root>Hello &amp; goodbye</root>", handler);
+}
+```
+
+`SaxParser::feed` and `SaxParser::finish` remain unsupported until the
+incremental SAX milestone.
 
 ## Debugging Tests
 

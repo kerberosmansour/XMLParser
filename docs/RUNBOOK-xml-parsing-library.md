@@ -44,7 +44,7 @@
 | # | Milestone | Status | Started | Completed | Lessons File | Completion Summary |
 |---|---|---|---|---|---|---|
 | 1 | Project Skeleton, Public API Frame, And Conformance Harness | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m1.md` | `docs/slo/completion/xmlparser-m1.md` |
-| 2 | Encoding, Tokenizer, And XML 1.0 Well-Formed Parsing | `in_progress` | 2026-05-09 | | `docs/slo/lessons/xmlparser-m2.md` | `docs/slo/completion/xmlparser-m2.md` |
+| 2 | Encoding, Tokenizer, And XML 1.0 Well-Formed Parsing | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m2.md` | `docs/slo/completion/xmlparser-m2.md` |
 | 3 | Namespaces And Incremental SAX API | `not_started` | | | `docs/slo/lessons/xmlparser-m3.md` | `docs/slo/completion/xmlparser-m3.md` |
 | 4 | DOM Model, Mutation, Traversal, And Serialization | `not_started` | | | `docs/slo/lessons/xmlparser-m4.md` | `docs/slo/completion/xmlparser-m4.md` |
 | 5 | DTD Validation, XML 1.1, Coverage, And Release Packaging | `not_started` | | | `docs/slo/lessons/xmlparser-m5.md` | `docs/slo/completion/xmlparser-m5.md` |
@@ -423,20 +423,20 @@ The repository currently contains a minimal [README.md](../README.md), [LICENSE]
 | Repo hygiene | `git status --short --branch`; `git rev-parse --abbrev-ref HEAD`; `git symbolic-ref --short refs/remotes/origin/HEAD`; `git switch -c slo/xml-parsing-library-m2` | execution occurs on a task branch with existing work preserved | Before: `slo/xml-parsing-library-m1` with completed M1 work; after: `slo/xml-parsing-library-m2`; default: `origin/main`; dirty tree preserved. | Pass | `gh issue list --label retro-derived --search "xmlparser" --state open --json number,title,body,url` returned `[]`. |
 | Prior lessons | read `docs/slo/lessons/xmlparser-m1.md` | M1 rules applied | M1 rules applied: no parallel E2E install-tree runs; avoid CMake echo semicolons; preserve empty-input/payload-safe diagnostics; update runbook allow-list for control edits. | Pass | M2 contract explicitly lists `docs/RUNBOOK-xml-parsing-library.md` as a control artifact. |
 | Baseline tests | `ctest --test-dir build --output-on-failure` | green | Passed 2 of 2 tests in 1.22s before M2 code changes. | Pass | M1 baseline green. |
-| BDD/REQ tests created | `tests/req/**` | fail for expected unsupported parser behavior before implementation | | | |
-| Implementation | parser core files | contract satisfied | | | |
-| Formatter | `cmake --build build --target format` | clean or documented target absence | | | |
-| Typecheck / build check | `cmake --build build` | clean | | | |
-| Static analyzer / linter | `cmake --build build --target lint` | clean or documented target absence | | | |
-| Dependency audit | no new runtime deps | pass | | | |
-| Full tests | `ctest --test-dir build --output-on-failure` | green | | | |
-| Requirement tests | `ctest --test-dir build --output-on-failure -L req` | green | | | |
-| E2E runtime | `ctest --test-dir build --output-on-failure -L e2e` | green | | | |
-| Resource-bound verification | depth/token/entity tests | typed resource-limit errors | | | |
-| Error-location verification | location tests | line/column/byte offset correct | | | |
-| Payload-safe diagnostics | secret-looking malformed XML test | no raw payload leakage | | | |
-| Test artifact cleanup | `git status` | no generated artifact residue | | | |
-| Compatibility checks | include/link/install tests | no regressions | | | |
+| BDD/REQ tests created | `tests/req/**` | fail for expected unsupported parser behavior before implementation | Added M2 requirement tests and registered `xmlparser_req`; `ctest --test-dir build --output-on-failure -L req` failed 17 of 19 cases against M1 unsupported parser behavior. | Pass | Two existing empty/payload tests already passed; new behavior tests failed for the expected reason. |
+| Implementation | parser core files | contract satisfied | Added `src/parser_core.h` and `src/parser_core.cpp`; wired public one-shot parse APIs to XML 1.0 parser core; left incremental feed/finish unsupported. | Pass | UTF-8/UTF-16 BOM, declarations, elements, attributes, comments, CDATA, PIs, predefined/character entities, locations, and resource limits implemented for M2. |
+| Formatter | `cmake --build build --target format` | clean or documented target absence | Passed; placeholder target reports no formatter configured in M1. | Pass | No semicolons added to custom target echo text. |
+| Typecheck / build check | `cmake --build build` | clean | Passed; `xmlparser`, Catch2, and `xmlparser_tests` built successfully. | Pass | CMake configure also passed with `XMLPARSER_BUILD_TESTS=ON`. |
+| Static analyzer / linter | `cmake --build build --target lint` | clean or documented target absence | Passed; placeholder target reports static analysis setup deferred. | Pass | Real lint tool remains deferred. |
+| Dependency audit | no new runtime deps | pass | `rg` review confirmed no new runtime dependency; only existing test-only Catch2 FetchContent pin remains. | Pass | `add_library(xmlparser src/xmlparser.cpp src/parser_core.cpp)` links only project sources. |
+| Full tests | `ctest --test-dir build --output-on-failure` | green | Passed 4 of 4 tests in 1.32s in the final post-retro run. | Pass | BDD, req, conformance, and E2E CTest entries all green. |
+| Requirement tests | `ctest --test-dir build --output-on-failure -L req` | green | Passed 2 of 2 labelled tests in 0.01s. | Pass | Includes `xmlparser_req` and `xmlparser_req_conformance`. |
+| E2E runtime | `ctest --test-dir build --output-on-failure -L e2e` | green | Passed 1 of 1 E2E test in 1.22s. | Pass | Run sequentially to avoid install-tree race. |
+| Resource-bound verification | depth/token/entity tests | typed resource-limit errors | `REQ_ERR_05_depth_limit_returns_resource_error`, `REQ_ERR_05_token_limit_returns_resource_error`, and `REQ_ERR_05_entity_expansion_limit_returns_resource_error` passed. | Pass | Resource failures use `ErrorKind::ResourceLimit`. |
+| Error-location verification | location tests | line/column/byte offset correct | `REQ_ERR_02_exception_contains_message_line_column_and_byte_offset` and `REQ_ERR_02_location_tracks_utf16_input_offsets` passed. | Pass | UTF-16 byte offset case reports offset 14 for mismatched end tag. |
+| Payload-safe diagnostics | secret-looking malformed XML test | no raw payload leakage | `REQ_ERR_06_secret_payload_is_not_echoed` and updated M1 raw XML test passed. | Pass | Messages omit full XML, `hunter2`, and other secret-looking substrings. |
+| Test artifact cleanup | `git status` | no generated artifact residue | `git status --short --branch` shows only intentional source/docs changes; `find` found no coverage/core artifacts; `build/` remains ignored. | Pass | `git check-ignore -v build build/CMakeCache.txt build/_deps` confirmed ignore coverage. |
+| Compatibility checks | include/link/install tests | no regressions | M1 BDD and E2E tests pass after updating expected post-M2 parser behavior; public namespace/header and install-tree consumer remain green. | Pass | `SaxParser::feed` and `finish` remain unsupported until M3. |
 
 #### Definition Of Done
 
