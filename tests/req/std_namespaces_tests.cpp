@@ -1,0 +1,55 @@
+#include <catch2/catch_test_macros.hpp>
+
+#include "parser_event_recorder.h"
+
+TEST_CASE("REQ_STD_03_resolves_default_namespace_scope",
+          "[req][bdd][m3][REQ-STD-03]") {
+  RecordingHandler handler;
+
+  xmlparser::v1::parse("<root xmlns=\"urn:a\"><child/></root>", handler);
+
+  REQUIRE(handler.events[1].uri == "urn:a");
+  REQUIRE(handler.events[1].local == "root");
+  REQUIRE(handler.events[2].uri == "urn:a");
+  REQUIRE(handler.events[2].local == "child");
+}
+
+TEST_CASE("REQ_STD_03_resolves_prefixed_names_across_nested_scopes",
+          "[req][bdd][m3][REQ-STD-03]") {
+  RecordingHandler handler;
+
+  xmlparser::v1::parse(
+      "<root xmlns:p=\"urn:one\"><p:item/><inner xmlns:p=\"urn:two\"><p:item "
+      "p:code=\"7\"/></inner></root>",
+      handler);
+
+  REQUIRE(handler.events[2].name == "p:item");
+  REQUIRE(handler.events[2].uri == "urn:one");
+  REQUIRE(handler.events[4].name == "p:item");
+  REQUIRE(handler.events[4].uri == "urn:two");
+  REQUIRE(handler.events[4].attributes.size() == 1);
+  REQUIRE(handler.events[4].attributes[0].uri == "urn:two");
+  REQUIRE(handler.events[4].attributes[0].local == "code");
+}
+
+TEST_CASE("REQ_STD_03_rejects_duplicate_expanded_attribute_names",
+          "[req][bdd][m3][REQ-STD-03]") {
+  try {
+    xmlparser::v1::parse(
+        "<root xmlns:a=\"urn:dup\" xmlns:b=\"urn:dup\" a:x=\"1\" b:x=\"2\"/>");
+    FAIL("duplicate expanded attribute names were accepted");
+  } catch (const xmlparser::v1::XmlParseException& error) {
+    REQUIRE(error.kind() == xmlparser::v1::ErrorKind::WellFormedness);
+  }
+}
+
+TEST_CASE("REQ_STD_03_handles_namespace_11_undeclaration",
+          "[req][bdd][m3][REQ-STD-03]") {
+  RecordingHandler handler;
+
+  xmlparser::v1::parse("<root xmlns=\"urn:a\"><child xmlns=\"\"/></root>", handler);
+
+  REQUIRE(handler.events[1].uri == "urn:a");
+  REQUIRE(handler.events[2].name == "child");
+  REQUIRE(handler.events[2].uri.empty());
+}

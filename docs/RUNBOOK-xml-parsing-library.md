@@ -45,7 +45,7 @@
 |---|---|---|---|---|---|---|
 | 1 | Project Skeleton, Public API Frame, And Conformance Harness | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m1.md` | `docs/slo/completion/xmlparser-m1.md` |
 | 2 | Encoding, Tokenizer, And XML 1.0 Well-Formed Parsing | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m2.md` | `docs/slo/completion/xmlparser-m2.md` |
-| 3 | Namespaces And Incremental SAX API | `not_started` | | | `docs/slo/lessons/xmlparser-m3.md` | `docs/slo/completion/xmlparser-m3.md` |
+| 3 | Namespaces And Incremental SAX API | `in_progress` | 2026-05-09 | | `docs/slo/lessons/xmlparser-m3.md` | `docs/slo/completion/xmlparser-m3.md` |
 | 4 | DOM Model, Mutation, Traversal, And Serialization | `not_started` | | | `docs/slo/lessons/xmlparser-m4.md` | `docs/slo/completion/xmlparser-m4.md` |
 | 5 | DTD Validation, XML 1.1, Coverage, And Release Packaging | `not_started` | | | `docs/slo/lessons/xmlparser-m5.md` | `docs/slo/completion/xmlparser-m5.md` |
 
@@ -452,13 +452,164 @@ The repository currently contains a minimal [README.md](../README.md), [LICENSE]
 
 ### Milestone 3 - Namespaces And Incremental SAX API
 
-**Status**: scope proposed; full contract must be authored after M2 is confirmed.
-
 **Goal**: Add XML Namespaces 1.0/1.1 resolution and SAX streaming parser with incremental chunked input and event handlers.
 
-**Primary requirements**: REQ-STD-03, REQ-SAX-01 through REQ-SAX-05, REQ-ERR-03.
+**Context**: M2 added one-shot XML 1.0 parsing in `src/parser_core.cpp` and left `SaxParser::feed` / `finish` unsupported. M3 turns the existing SAX surface into a usable incremental API, adds namespace-aware `QualifiedName` values for elements and attributes, and preserves M2 parser behavior as the shared core. DOM construction, serializer behavior, DTD validation, and full XML 1.1 character-rule support remain later milestones.
 
-**Planned abuse coverage**: arbitrary chunk boundaries, namespace stack imbalance, callback exceptions, attribute namespace collisions, recoverable validity callback behavior.
+**Important design rule**: Incremental parsing must reuse M2 parser-core semantics and must not fork a second parser; M3 may buffer chunks up to `max_document_bytes`, but all chunk-boundary and finish-state behavior must be public-API tested before M4.
+
+**Refactor budget**: `Limited internal parser-core refactor permitted`; behavior must be preserved by M1/M2 tests before and after.
+
+#### Contract Block
+
+| Field | Value |
+|---|---|
+| Inputs | M2 parser core, M2 lessons, namespace and SAX interface lock, threat model rows for chunking/callback boundaries |
+| Outputs | Namespace-aware SAX event names, duplicate expanded attribute-name checks, incremental `SaxParser::feed` / `finish`, std::function callback adapter, requirement tests, docs updates |
+| Interfaces touched | `QualifiedName`, `AttributeView`, `SaxHandler`, `SaxCallbacks`, `SaxParser::parse`, `SaxParser::feed`, `SaxParser::finish`, `ParserOptions::namespaces` |
+| Files allowed to change | `CMakeLists.txt`, `include/xmlparser/*.h`, `src/*.cpp`, `src/*.h`, `tests/**`, `docs/RUNBOOK-xml-parsing-library.md`, `docs/slo/**`, `docs/requirements-traceability.md`, `ARCHITECTURE.md`, `README.md` |
+| Files to read before changing anything | `docs/slo/lessons/xmlparser-m2.md`, `ARCHITECTURE.md`, `SECURITY.md`, `docs/slo/design/xml-parsing-library-interfaces.md`, `docs/slo/design/xml-parsing-library-threat-model.md`, `src/parser_core.cpp`, `include/xmlparser/sax.h`, `tests/req/parser_event_recorder.h` |
+| New files allowed | `tests/req/std_namespaces_tests.cpp`, `tests/req/sax_streaming_tests.cpp`, `tests/req/sax_event_coverage_tests.cpp`, `tests/req/sax_callback_registration_tests.cpp`, `tests/req/sax_incremental_tests.cpp`, `tests/req/sax_namespace_event_tests.cpp`, `tests/req/error_recoverable_callback_tests.cpp`, `docs/slo/verify/xmlparser-m3.md`, `docs/slo/lessons/xmlparser-m3.md`, `docs/slo/completion/xmlparser-m3.md` |
+| New dependencies allowed | none |
+| Migration allowed | no |
+| Compatibility commitments | M1/M2 public headers continue to compile as C++17; one-shot parse behavior remains stable; install-tree consumer still works |
+| Resource bounds introduced/changed | `SaxParser::feed` buffers are capped by `ParserOptions::max_document_bytes`; namespace scope depth follows element depth; attribute expanded-name uniqueness is checked per element |
+| Invariants/assertions required | namespace scopes push/pop with element stack; prefix lookup is deterministic; duplicate expanded attribute names are rejected; `finish()` rejects incomplete documents; callback exceptions propagate without hidden parser state corruption |
+| Debugger / inspection expectation | README debugger command remains valid for SAX/namespace tests |
+| Static analysis gates | CMake configure/build, `ctest`, formatter placeholder, lint placeholder |
+| Exemplar code to copy | M2 parser-core tests in `tests/req/**`, `RecordingHandler` helper, and M2 decoder/tokenizer flow in `src/parser_core.cpp` |
+| Anti-exemplar code not to copy | Do not implement a parallel SAX parser path or copy implementation code from Xerces-C++, Expat, libxml2, pugixml, TinyXML-2, or W3C fixtures |
+| Refactoring discipline | Apply behavior-preserving microsteps with pre-test and post-test proof; M1/M2 tests must stay green while M3 internals change |
+| AI tolerance contract | N/A - no AI component |
+| Data classification | Public |
+| Proactive controls in play | OWASP C1 Define Security Requirements; C5 Validate All Inputs; C10 Handle All Errors and Exceptions |
+| Abuse acceptance scenarios | `tm-xml-parsing-library-abuse-4`, `tm-xml-parsing-library-abuse-5`, `tm-xml-parsing-library-abuse-6`, `tm-xml-parsing-library-abuse-7`, `tm-xml-parsing-library-abuse-12` covered by chunk-boundary, finish-state, bounded buffer, callback exception, and duplicate expanded attribute tests |
+
+#### Out Of Scope / Must Not Do
+
+- Do not implement DOM construction, mutation, traversal, or serialization.
+- Do not implement DTD validation, external resolver behavior, XML Schema, XPath, XQuery, or XSLT.
+- Do not vendor W3C fixtures.
+- Do not implement full XML 1.1 character-rule differences; M3 may represent namespace undeclaration behavior needed by Namespaces 1.1 tests.
+- Do not introduce runtime dependencies.
+
+#### Files Allowed To Change
+
+| File | Planned Change |
+|---|---|
+| `CMakeLists.txt` | Register M3 requirement tests |
+| `include/xmlparser/sax.h` | Add `SaxCallbacks` adapter and incremental parser state fields |
+| `src/xmlparser.cpp` | Implement `SaxCallbacks` adapter and incremental `SaxParser` buffering |
+| `src/parser_core.*` | Add namespace stack, QName resolution, duplicate expanded attribute checks |
+| `tests/req/**` | NEW: namespace, SAX, incremental, callback, and recoverable/error tests |
+| `docs/requirements-traceability.md` | Add M3 requirement coverage |
+| `ARCHITECTURE.md` | Add namespace/incremental SAX implementation notes |
+| `README.md` | Add SAX callback and incremental feed examples |
+| `docs/RUNBOOK-xml-parsing-library.md` | Control artifact: tracker and M3 evidence updates |
+| `docs/slo/verify/xmlparser-m3.md` | NEW after verification |
+| `docs/slo/lessons/xmlparser-m3.md` | NEW after milestone completion |
+| `docs/slo/completion/xmlparser-m3.md` | NEW after milestone completion |
+
+#### Step By Step
+
+1. Confirm baseline tests are green and record repo hygiene.
+2. Write M3 requirement tests first under `tests/req/**`.
+3. Run M3 tests and confirm they fail against M2 unsupported incremental/no-namespace behavior.
+4. Add namespace stack and qualified-name resolution to parser core.
+5. Implement `SaxParser::feed` / `finish` with bounded buffering and callback exception propagation.
+6. Add `SaxCallbacks` adapter for selective std::function handlers.
+7. Update traceability docs, README, and architecture notes.
+8. Run build, BDD, requirement, E2E, full test, format, lint, and cleanup checks.
+9. Write verification report, lessons, and completion summary.
+
+#### BDD Acceptance Scenarios
+
+**Feature: namespaces and incremental SAX**
+
+| Scenario | Category | Given | When | Then |
+|---|---|---|---|---|
+| M3 resolves default namespace scope | happy path | `<root xmlns="urn:a"><child/></root>` | SAX parse runs | element events include `uri=urn:a`, local names, and qnames |
+| M3 resolves prefixed names across nested scopes | happy path | nested `xmlns:p` declarations change URI | SAX parse runs | each prefixed element/attribute event uses the in-scope URI |
+| M3 rejects duplicate expanded attribute names | abuse `tm-xml-parsing-library-abuse-12` | attributes `a:x` and `b:x` map to the same URI/local pair | parse runs | well-formedness error is thrown |
+| M3 handles namespace undeclaration | compatibility | nested `xmlns=""` clears the default namespace | SAX parse runs | child element has empty namespace URI |
+| M3 emits SAX document and markup coverage | happy path | XML includes document, elements, text, PI, comment, CDATA | SAX parse runs | handler observes all event classes |
+| M3 registers virtual handler | happy path | a subclassed `SaxHandler` is supplied | parse runs | virtual callbacks receive events |
+| M3 registers std::function callbacks | happy path | `SaxCallbacks` has selective callbacks | parse runs | only provided callbacks are invoked |
+| M3 accepts one-byte chunks | chunk boundary / abuse `tm-xml-parsing-library-abuse-6` | XML is fed byte by byte | `finish()` runs | parse succeeds and emits correct events |
+| M3 accepts chunks split inside markup and multibyte sequences | chunk boundary / abuse `tm-xml-parsing-library-abuse-4` | chunks split inside a tag and inside UTF-8 bytes | `finish()` runs | parse succeeds with decoded text |
+| M3 finish rejects truncated document | degraded state / abuse `tm-xml-parsing-library-abuse-5` | only `<root><child>` is fed | `finish()` runs | typed well-formedness error is thrown |
+| M3 callback throw propagates safely | abuse `tm-xml-parsing-library-abuse-7` | handler throws during a nested element callback | parse runs | caller observes the same exception and subsequent fresh parser use succeeds |
+| M3 recoverable validity callback is not yet supported | dependency/future behavior | caller asks for DTD validity recovery in M3 | tests inspect API behavior | no silent validity success path exists before M5 |
+
+#### Regression Tests
+
+- `ctest --test-dir build --output-on-failure` must pass.
+- M1/M2 BDD, E2E, and requirement tests must still pass.
+- M3 requirement tests under `tests/req/**` must pass with `req` CTest label.
+
+#### Compatibility Checklist
+
+- [ ] Public API remains in `xmlparser::v1`.
+- [ ] `<xmlparser/xmlparser.h>` compiles as C++17.
+- [ ] One-shot parse behavior from M2 remains stable.
+- [ ] Install-tree consumer still works.
+- [ ] `SaxParser::feed` and `finish` are now supported and bounded.
+- [ ] No runtime dependency is introduced.
+- [ ] Raw XML payloads remain absent from default diagnostics.
+
+#### E2E Runtime Validation
+
+**File**: M3 requirement tests plus existing install-tree consumer.
+
+| E2E Test | What It Proves | Pass Criteria |
+|---|---|---|
+| `m1_install_tree_consumer_can_find_package` | Installed package still works after SAX changes | temp project configures, builds, links, and runs |
+| `REQ_SAX_04_accepts_one_byte_chunks` | Incremental parser handles worst-case tiny chunks | parse succeeds |
+| `REQ_SAX_04_finish_rejects_truncated_document` | Finish-state validation catches incomplete input | typed well-formedness error |
+| `REQ_STD_03_resolves_prefixed_names_across_nested_scopes` | Runtime namespace stack is scoped correctly | observed URIs match expected scopes |
+
+#### Smoke Tests
+
+- [ ] `cmake -S . -B build -DXMLPARSER_BUILD_TESTS=ON` configures.
+- [ ] `cmake --build build` passes.
+- [ ] `ctest --test-dir build --output-on-failure` passes.
+- [ ] `ctest --test-dir build --output-on-failure -L req` passes.
+- [ ] `ctest --test-dir build --output-on-failure -L e2e` passes.
+- [ ] `cmake --build build --target format` passes or documents absence.
+- [ ] `cmake --build build --target lint` passes or documents absence.
+- [ ] `git status` shows no generated artifact residue except intentional source/docs.
+
+#### Evidence Log
+
+| Step | Command / Check | Expected Result | Actual Result | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| Repo hygiene | `git status --short --branch`; `git rev-parse --abbrev-ref HEAD`; `git symbolic-ref --short refs/remotes/origin/HEAD`; `git switch -c slo/xml-parsing-library-m3` | execution occurs on a task branch with existing work preserved | Before: `slo/xml-parsing-library-m2`; after: `slo/xml-parsing-library-m3`; default: `origin/main`; dirty tree contains only the M3 contract edit. | Pass | `gh issue list --label retro-derived --search "xmlparser" --state open --json number,title,body,url` returned `[]`. |
+| Prior lessons | read `docs/slo/lessons/xmlparser-m2.md` | M2 rules applied | M2 rules applied: preserve one-shot parser behavior; share decoder/tokenizer for incremental API; add chunk-split tests; keep AttributeView lifetime callback-scoped; build namespaces from raw QName parsing. | Pass | Contract includes these rules. |
+| Baseline tests | `ctest --test-dir build --output-on-failure` | green | Passed 4 of 4 tests in 1.42s before M3 code changes. | Pass | M2 baseline green. |
+| BDD/REQ tests created | `tests/req/**` | fail for expected M2 no-namespace/unsupported incremental behavior before implementation | | | |
+| Implementation | namespace and incremental SAX files | contract satisfied | | | |
+| Formatter | `cmake --build build --target format` | clean or documented target absence | | | |
+| Typecheck / build check | `cmake --build build` | clean | | | |
+| Static analyzer / linter | `cmake --build build --target lint` | clean or documented target absence | | | |
+| Dependency audit | no new runtime deps | pass | | | |
+| Full tests | `ctest --test-dir build --output-on-failure` | green | | | |
+| Requirement tests | `ctest --test-dir build --output-on-failure -L req` | green | | | |
+| E2E runtime | `ctest --test-dir build --output-on-failure -L e2e` | green | | | |
+| Namespace verification | namespace tests | URIs/local/qname correct | | | |
+| Incremental verification | chunk-boundary tests | feed/finish behavior correct | | | |
+| Callback safety verification | throwing callback test | exception propagates and fresh parser works | | | |
+| Test artifact cleanup | `git status` | no generated artifact residue | | | |
+| Compatibility checks | include/link/install tests | no regressions | | | |
+
+#### Definition Of Done
+
+- All listed M3 scenarios pass.
+- M1/M2 tests still pass.
+- Namespace-aware event data includes URI, local name, and qname.
+- Duplicate expanded attribute names are rejected.
+- Incremental `feed`/`finish` handles arbitrary chunk boundaries and rejects truncated input.
+- Callback exceptions propagate without corrupting future parser use.
+- Requirement traceability, README, verification report, lessons, completion summary, and milestone tracker are updated.
 
 ---
 

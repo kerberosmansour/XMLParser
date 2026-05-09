@@ -67,6 +67,10 @@ void parse(std::string_view xml, SaxHandler& handler, const ParserOptions& optio
   detail::parse_xml_document(xml, handler, options);
 }
 
+void parse(std::string_view, SaxCallbacks&, const ParserOptions&) {
+  throw unsupported_parser_error();
+}
+
 SaxParser::SaxParser(SaxHandler& handler, ParserOptions options)
     : handler_(&handler), options_(options) {}
 

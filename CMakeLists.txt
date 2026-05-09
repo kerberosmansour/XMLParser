@@ -92,8 +92,15 @@ if(XMLPARSER_BUILD_TESTS)
     tests/req/error_exception_safety_tests.cpp
     tests/req/error_location_exception_tests.cpp
     tests/req/error_malformed_input_tests.cpp
+    tests/req/error_recoverable_callback_tests.cpp
+    tests/req/sax_callback_registration_tests.cpp
+    tests/req/sax_event_coverage_tests.cpp
+    tests/req/sax_incremental_tests.cpp
+    tests/req/sax_namespace_event_tests.cpp
+    tests/req/sax_streaming_tests.cpp
     tests/req/std_encoding_tests.cpp
     tests/req/std_markup_constructs_tests.cpp
+    tests/req/std_namespaces_tests.cpp
     tests/req/std_xml10_conformance_tests.cpp)
   target_link_libraries(xmlparser_tests PRIVATE xmlparser::xmlparser
                                                 Catch2::Catch2WithMain)
