@@ -43,11 +43,20 @@ std::string quote(const fs::path& path) {
 
 std::string quote_command(const fs::path& path) {
 #ifdef _WIN32
-  // cmd.exe needs an extra leading quote when the executable path is quoted and has args.
+  // run_command closes this cmd.exe wrapper after all arguments have been appended.
   return "\"" + quote(path);
 #else
   return quote(path);
 #endif
+}
+
+std::string shell_command(const std::string& command) {
+#ifdef _WIN32
+  if (command.rfind("\"\"", 0) == 0) {
+    return command + "\"";
+  }
+#endif
+  return command;
 }
 
 void write_file(const fs::path& path, const std::string& contents) {
@@ -65,8 +74,9 @@ fs::path unique_temp_dir(const std::string& name) {
 }
 
 void run_command(const std::string& command) {
-  INFO("command: " << command);
-  REQUIRE(std::system(command.c_str()) == 0);
+  const std::string effective_command = shell_command(command);
+  INFO("command: " << effective_command);
+  REQUIRE(std::system(effective_command.c_str()) == 0);
 }
 
 }  // namespace
