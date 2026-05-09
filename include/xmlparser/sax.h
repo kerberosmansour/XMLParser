@@ -62,6 +62,8 @@ class SaxParser {
  private:
   SaxHandler* handler_;
   ParserOptions options_;
+  std::string buffer_;
+  bool finished_ = false;
 };
 
 }  // namespace xmlparser::v1

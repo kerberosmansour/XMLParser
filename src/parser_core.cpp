@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <limits>
+#include <map>
+#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -19,6 +21,12 @@ struct DecodedChar {
 struct DecodedDocument {
   std::vector<DecodedChar> chars;
   SourceLocation end_location;
+};
+
+struct RawAttribute {
+  std::string name;
+  std::string value;
+  SourceLocation location;
 };
 
 bool is_space(char32_t value) {
@@ -434,40 +442,64 @@ class Parser {
       fail_at(ErrorKind::ResourceLimit, start, "XML element depth limit exceeded");
     }
 
-    std::vector<std::pair<std::string, std::string>> attributes =
-        parse_attributes();
+    std::vector<RawAttribute> attributes = parse_attributes();
+    const std::map<std::string, std::string> namespace_declarations =
+        collect_namespace_declarations(attributes);
+    namespace_scopes_.push_back(namespace_declarations);
+    const QualifiedName element_name = resolve_name(name, true, start);
 
     std::vector<std::string> attribute_value_storage;
     attribute_value_storage.reserve(attributes.size());
     for (const auto& attribute : attributes) {
-      attribute_value_storage.push_back(attribute.second);
+      if (!is_namespace_declaration(attribute.name)) {
+        attribute_value_storage.push_back(attribute.value);
+      }
     }
 
     std::vector<AttributeView> attribute_views;
-    attribute_views.reserve(attributes.size());
-    for (std::size_t i = 0; i < attributes.size(); ++i) {
+    attribute_views.reserve(attribute_value_storage.size());
+    std::set<std::pair<std::string, std::string>> expanded_attribute_names;
+    std::size_t emitted_attribute_index = 0;
+    for (const auto& attribute : attributes) {
+      if (is_namespace_declaration(attribute.name)) {
+        continue;
+      }
+      QualifiedName attribute_name = resolve_name(attribute.name, false,
+                                                 attribute.location);
+      const auto expanded_name =
+          std::make_pair(attribute_name.uri, attribute_name.local_name);
+      if (!expanded_attribute_names.insert(expanded_name).second) {
+        fail_at(ErrorKind::WellFormedness, attribute.location,
+                "duplicate expanded attribute name");
+      }
       attribute_views.push_back(
-          {QualifiedName{"", attributes[i].first, attributes[i].first},
-           attribute_value_storage[i], start});
+          {std::move(attribute_name), attribute_value_storage[emitted_attribute_index],
+           attribute.location});
+      ++emitted_attribute_index;
     }
 
     element_stack_.push_back(name);
-    handler_.start_element(QualifiedName{"", name, name}, attribute_views);
+    element_name_stack_.push_back(element_name);
+    handler_.start_element(element_name, attribute_views);
 
     if (starts_with(U"/>")) {
       expect_sequence(U"/>", "empty element close");
-      handler_.end_element(QualifiedName{"", name, name});
+      handler_.end_element(element_name);
+      namespace_scopes_.pop_back();
+      element_name_stack_.pop_back();
       element_stack_.pop_back();
       return;
     }
 
     expect(U'>', "'>'");
     parse_content(name);
+    namespace_scopes_.pop_back();
+    element_name_stack_.pop_back();
     element_stack_.pop_back();
   }
 
-  std::vector<std::pair<std::string, std::string>> parse_attributes() {
-    std::vector<std::pair<std::string, std::string>> attributes;
+  std::vector<RawAttribute> parse_attributes() {
+    std::vector<RawAttribute> attributes;
 
     while (true) {
       skip_whitespace();
@@ -475,9 +507,10 @@ class Parser {
         return attributes;
       }
 
+      const SourceLocation attribute_location = location();
       const std::string name = parse_name();
       if (std::any_of(attributes.begin(), attributes.end(),
-                      [&](const auto& existing) { return existing.first == name; })) {
+                      [&](const auto& existing) { return existing.name == name; })) {
         fail(ErrorKind::WellFormedness, "duplicate attribute name");
       }
       if (attributes.size() + 1 > options_.max_attributes_per_element) {
@@ -488,8 +521,71 @@ class Parser {
       skip_whitespace();
       expect(U'=', "'=' after attribute name");
       skip_whitespace();
-      attributes.push_back({name, parse_attribute_value()});
+      attributes.push_back({name, parse_attribute_value(), attribute_location});
     }
+  }
+
+  bool is_namespace_declaration(const std::string& name) const {
+    return options_.namespaces == NamespaceMode::Enabled &&
+           (name == "xmlns" || name.rfind("xmlns:", 0) == 0);
+  }
+
+  std::map<std::string, std::string> collect_namespace_declarations(
+      const std::vector<RawAttribute>& attributes) const {
+    std::map<std::string, std::string> declarations;
+    if (options_.namespaces == NamespaceMode::Disabled) {
+      return declarations;
+    }
+    for (const auto& attribute : attributes) {
+      if (attribute.name == "xmlns") {
+        declarations[""] = attribute.value;
+      } else if (attribute.name.rfind("xmlns:", 0) == 0) {
+        declarations[attribute.name.substr(6)] = attribute.value;
+      }
+    }
+    return declarations;
+  }
+
+  QualifiedName resolve_name(const std::string& qname,
+                             bool is_element,
+                             SourceLocation source_location) const {
+    if (options_.namespaces == NamespaceMode::Disabled) {
+      return QualifiedName{"", qname, qname};
+    }
+
+    const std::size_t colon = qname.find(':');
+    if (colon == std::string::npos) {
+      const std::string uri = is_element ? lookup_namespace("") : "";
+      return QualifiedName{uri, qname, qname};
+    }
+    if (colon == 0 || colon + 1 >= qname.size() ||
+        qname.find(':', colon + 1) != std::string::npos) {
+      fail_at(ErrorKind::WellFormedness, source_location,
+              "invalid namespace-qualified name");
+    }
+
+    const std::string prefix = qname.substr(0, colon);
+    const std::string local_name = qname.substr(colon + 1);
+    const std::string uri = lookup_namespace(prefix);
+    if (uri.empty() && prefix != "xml") {
+      fail_at(ErrorKind::WellFormedness, source_location,
+              "undeclared namespace prefix");
+    }
+    return QualifiedName{uri, local_name, qname};
+  }
+
+  std::string lookup_namespace(const std::string& prefix) const {
+    if (prefix == "xml") {
+      return "http://www.w3.org/XML/1998/namespace";
+    }
+    for (auto scope = namespace_scopes_.rbegin(); scope != namespace_scopes_.rend();
+         ++scope) {
+      const auto found = scope->find(prefix);
+      if (found != scope->end()) {
+        return found->second;
+      }
+    }
+    return "";
   }
 
   std::string parse_attribute_value() {
@@ -528,7 +624,7 @@ class Parser {
         if (end_name != open_name) {
           fail_at(ErrorKind::WellFormedness, end_start, "mismatched end tag");
         }
-        handler_.end_element(QualifiedName{"", open_name, open_name});
+        handler_.end_element(element_name_stack_.back());
         return;
       }
       if (starts_with(U"<!--")) {
@@ -718,6 +814,8 @@ class Parser {
   std::size_t index_ = 0;
   std::size_t entity_expansions_ = 0;
   std::vector<std::string> element_stack_;
+  std::vector<QualifiedName> element_name_stack_;
+  std::vector<std::map<std::string, std::string>> namespace_scopes_;
 };
 
 }  // namespace

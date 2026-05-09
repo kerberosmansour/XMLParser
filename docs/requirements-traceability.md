@@ -22,12 +22,20 @@ future conformance fixtures.
 | `REQ-ERR-02` parse exceptions include source locations | `tests/req/error_location_exception_tests.cpp` | `REQ_ERR_02_exception_contains_message_line_column_and_byte_offset`; `REQ_ERR_02_location_tracks_utf16_input_offsets` |
 | `REQ-ERR-05` parser-core resource limits fail safely | `tests/req/error_exception_safety_tests.cpp` | `REQ_ERR_05_depth_limit_returns_resource_error`; `REQ_ERR_05_token_limit_returns_resource_error`; `REQ_ERR_05_entity_expansion_limit_returns_resource_error` |
 | `REQ-ERR-06` empty, truncated, malformed, and secret-looking input has defined failure behavior | `tests/req/error_malformed_input_tests.cpp`; `tests/req/std_encoding_tests.cpp` | `REQ_ERR_06_empty_input_returns_defined_error`; `REQ_ERR_06_truncated_input_returns_defined_error`; `REQ_ERR_06_secret_payload_is_not_echoed`; `REQ_STD_04_rejects_truncated_multibyte_sequence_with_byte_offset` |
+| `REQ-STD-03` namespace scope and duplicate expanded-name behavior | `tests/req/std_namespaces_tests.cpp` | `REQ_STD_03_resolves_default_namespace_scope`; `REQ_STD_03_resolves_prefixed_names_across_nested_scopes`; `REQ_STD_03_rejects_duplicate_expanded_attribute_names`; `REQ_STD_03_handles_namespace_11_undeclaration` |
+| `REQ-SAX-01` SAX parser parses without DOM and enforces bounded incremental input | `tests/req/sax_streaming_tests.cpp` | `REQ_SAX_01_parses_without_dom_allocation`; `REQ_SAX_01_streams_large_document_with_bounded_memory` |
+| `REQ-SAX-02` SAX event coverage | `tests/req/sax_event_coverage_tests.cpp` | `REQ_SAX_02_emits_document_start_end`; `REQ_SAX_02_emits_element_start_end`; `REQ_SAX_02_emits_character_pi_comment_and_cdata_events` |
+| `REQ-SAX-03` virtual handlers and std::function callback adapter | `tests/req/sax_callback_registration_tests.cpp` | `REQ_SAX_03_registers_virtual_handler`; `REQ_SAX_03_registers_std_function_callbacks`; `REQ_SAX_03_allows_selective_callbacks` |
+| `REQ-SAX-04` incremental chunking | `tests/req/sax_incremental_tests.cpp` | `REQ_SAX_04_accepts_one_byte_chunks`; `REQ_SAX_04_accepts_chunks_split_inside_markup`; `REQ_SAX_04_accepts_chunks_split_inside_multibyte_sequence`; `REQ_SAX_04_finish_rejects_truncated_document` |
+| `REQ-SAX-05` namespace-aware SAX event data | `tests/req/sax_namespace_event_tests.cpp` | `REQ_SAX_05_element_events_include_uri_local_and_qname`; `REQ_SAX_05_attribute_events_include_uri_local_and_qname` |
+| `REQ-ERR-03` non-recoverable well-formedness errors stop parse before validity recovery exists | `tests/req/error_recoverable_callback_tests.cpp` | `REQ_ERR_03_non_recoverable_well_formedness_error_stops_parse` |
 
 ## Future Coverage Hooks
 
 - `REQ-STD-*` expands again in M5 when XML 1.1 and conformance fixture
   ingestion are implemented.
-- `REQ-SAX-*` expands in M3 when incremental SAX callbacks are implemented.
+- `REQ-SAX-*` expands again in M5 only if conformance fixtures reveal extra
+  namespace/SAX cases.
 - `REQ-DOM-*` expands in M4 when DOM mutation, traversal, and serialization
   are implemented.
 - `REQ-VALID-*` expands in M5 when DTD validation is implemented.

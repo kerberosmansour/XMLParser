@@ -1,9 +1,9 @@
 # XMLParser
 
 XMLParser is a C++17 XML parsing library under active SLO-driven
-development. The current milestone provides a one-shot XML 1.0 well-formedness
-parser with UTF-8/UTF-16 BOM handling, source-location diagnostics, and
-SAX-style event callbacks. Incremental SAX, namespaces, DOM ownership,
+development. The current milestone provides XML 1.0 well-formedness parsing,
+UTF-8/UTF-16 BOM handling, source-location diagnostics, namespace-aware SAX
+events, and an incremental `feed` / `finish` API. DOM ownership,
 serialization, XML 1.1, and DTD validation land in later milestones.
 
 ## Build
@@ -98,8 +98,50 @@ int main() {
 }
 ```
 
-`SaxParser::feed` and `SaxParser::finish` remain unsupported until the
-incremental SAX milestone.
+## Incremental SAX
+
+```cpp
+#include <xmlparser/xmlparser.h>
+
+class Handler : public xmlparser::v1::SaxHandler {};
+
+int main() {
+  Handler handler;
+  xmlparser::v1::SaxParser parser(handler);
+
+  parser.feed("<root xmlns=\"urn:example\">");
+  parser.feed("<child/>");
+  parser.feed("</root>");
+  parser.finish();
+}
+```
+
+Incremental input is buffered up to `ParserOptions::max_document_bytes` and
+then parsed by the shared parser core on `finish()`.
+
+## Selective Callbacks
+
+```cpp
+#include <xmlparser/xmlparser.h>
+
+#include <vector>
+
+int main() {
+  std::vector<std::string> element_names;
+  xmlparser::v1::SaxCallbacks callbacks;
+
+  callbacks.on_start_element =
+      [&](const xmlparser::v1::QualifiedName& name,
+          const std::vector<xmlparser::v1::AttributeView>&) {
+        element_names.push_back(name.qualified_name);
+      };
+
+  xmlparser::v1::parse("<root><child/></root>", callbacks);
+}
+```
+
+When namespace processing is enabled, element and attribute events include URI,
+local name, and qualified name.
 
 ## Debugging Tests
 

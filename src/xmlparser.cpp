@@ -67,8 +67,71 @@ void parse(std::string_view xml, SaxHandler& handler, const ParserOptions& optio
   detail::parse_xml_document(xml, handler, options);
 }
 
-void parse(std::string_view, SaxCallbacks&, const ParserOptions&) {
-  throw unsupported_parser_error();
+namespace {
+
+class CallbackHandler final : public SaxHandler {
+ public:
+  explicit CallbackHandler(SaxCallbacks& callbacks) : callbacks_(callbacks) {}
+
+  void start_document() override {
+    if (callbacks_.on_start_document) {
+      callbacks_.on_start_document();
+    }
+  }
+
+  void end_document() override {
+    if (callbacks_.on_end_document) {
+      callbacks_.on_end_document();
+    }
+  }
+
+  void start_element(const QualifiedName& name,
+                     const std::vector<AttributeView>& attributes) override {
+    if (callbacks_.on_start_element) {
+      callbacks_.on_start_element(name, attributes);
+    }
+  }
+
+  void end_element(const QualifiedName& name) override {
+    if (callbacks_.on_end_element) {
+      callbacks_.on_end_element(name);
+    }
+  }
+
+  void characters(std::string_view text) override {
+    if (callbacks_.on_characters) {
+      callbacks_.on_characters(text);
+    }
+  }
+
+  void processing_instruction(std::string_view target,
+                              std::string_view data) override {
+    if (callbacks_.on_processing_instruction) {
+      callbacks_.on_processing_instruction(target, data);
+    }
+  }
+
+  void comment(std::string_view text) override {
+    if (callbacks_.on_comment) {
+      callbacks_.on_comment(text);
+    }
+  }
+
+  void cdata(std::string_view text) override {
+    if (callbacks_.on_cdata) {
+      callbacks_.on_cdata(text);
+    }
+  }
+
+ private:
+  SaxCallbacks& callbacks_;
+};
+
+}  // namespace
+
+void parse(std::string_view xml, SaxCallbacks& callbacks, const ParserOptions& options) {
+  CallbackHandler handler(callbacks);
+  detail::parse_xml_document(xml, handler, options);
 }
 
 SaxParser::SaxParser(SaxHandler& handler, ParserOptions options)
@@ -79,14 +142,21 @@ void SaxParser::parse(std::string_view xml) {
 }
 
 void SaxParser::feed(std::string_view chunk) {
-  if (chunk.empty()) {
-    throw empty_input_error();
+  if (finished_) {
+    throw XmlParseException(ErrorKind::Unsupported, SourceLocation{},
+                            "SaxParser cannot be reused after finish");
   }
-  throw unsupported_parser_error();
+  if (buffer_.size() + chunk.size() > options_.max_document_bytes) {
+    throw XmlParseException(ErrorKind::ResourceLimit, SourceLocation{},
+                            "XML input exceeds max_document_bytes");
+  }
+  buffer_.append(chunk.data(), chunk.size());
 }
 
 void SaxParser::finish() {
-  throw unsupported_parser_error();
+  finished_ = true;
+  v1::parse(buffer_, *handler_, options_);
+  buffer_.clear();
 }
 
 const ParserOptions& SaxParser::options() const noexcept {

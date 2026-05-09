@@ -23,13 +23,19 @@ TEST_CASE("REQ_STD_03_resolves_prefixed_names_across_nested_scopes",
       "p:code=\"7\"/></inner></root>",
       handler);
 
-  REQUIRE(handler.events[2].name == "p:item");
-  REQUIRE(handler.events[2].uri == "urn:one");
-  REQUIRE(handler.events[4].name == "p:item");
-  REQUIRE(handler.events[4].uri == "urn:two");
-  REQUIRE(handler.events[4].attributes.size() == 1);
-  REQUIRE(handler.events[4].attributes[0].uri == "urn:two");
-  REQUIRE(handler.events[4].attributes[0].local == "code");
+  std::vector<RecordedEvent> item_starts;
+  for (const auto& event : handler.events) {
+    if (event.type == "start_element" && event.name == "p:item") {
+      item_starts.push_back(event);
+    }
+  }
+
+  REQUIRE(item_starts.size() == 2);
+  REQUIRE(item_starts[0].uri == "urn:one");
+  REQUIRE(item_starts[1].uri == "urn:two");
+  REQUIRE(item_starts[1].attributes.size() == 1);
+  REQUIRE(item_starts[1].attributes[0].uri == "urn:two");
+  REQUIRE(item_starts[1].attributes[0].local == "code");
 }
 
 TEST_CASE("REQ_STD_03_rejects_duplicate_expanded_attribute_names",

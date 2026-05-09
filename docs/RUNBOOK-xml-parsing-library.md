@@ -45,7 +45,7 @@
 |---|---|---|---|---|---|---|
 | 1 | Project Skeleton, Public API Frame, And Conformance Harness | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m1.md` | `docs/slo/completion/xmlparser-m1.md` |
 | 2 | Encoding, Tokenizer, And XML 1.0 Well-Formed Parsing | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m2.md` | `docs/slo/completion/xmlparser-m2.md` |
-| 3 | Namespaces And Incremental SAX API | `in_progress` | 2026-05-09 | | `docs/slo/lessons/xmlparser-m3.md` | `docs/slo/completion/xmlparser-m3.md` |
+| 3 | Namespaces And Incremental SAX API | `done` | 2026-05-09 | 2026-05-09 | `docs/slo/lessons/xmlparser-m3.md` | `docs/slo/completion/xmlparser-m3.md` |
 | 4 | DOM Model, Mutation, Traversal, And Serialization | `not_started` | | | `docs/slo/lessons/xmlparser-m4.md` | `docs/slo/completion/xmlparser-m4.md` |
 | 5 | DTD Validation, XML 1.1, Coverage, And Release Packaging | `not_started` | | | `docs/slo/lessons/xmlparser-m5.md` | `docs/slo/completion/xmlparser-m5.md` |
 
@@ -586,20 +586,20 @@ The repository currently contains a minimal [README.md](../README.md), [LICENSE]
 | Repo hygiene | `git status --short --branch`; `git rev-parse --abbrev-ref HEAD`; `git symbolic-ref --short refs/remotes/origin/HEAD`; `git switch -c slo/xml-parsing-library-m3` | execution occurs on a task branch with existing work preserved | Before: `slo/xml-parsing-library-m2`; after: `slo/xml-parsing-library-m3`; default: `origin/main`; dirty tree contains only the M3 contract edit. | Pass | `gh issue list --label retro-derived --search "xmlparser" --state open --json number,title,body,url` returned `[]`. |
 | Prior lessons | read `docs/slo/lessons/xmlparser-m2.md` | M2 rules applied | M2 rules applied: preserve one-shot parser behavior; share decoder/tokenizer for incremental API; add chunk-split tests; keep AttributeView lifetime callback-scoped; build namespaces from raw QName parsing. | Pass | Contract includes these rules. |
 | Baseline tests | `ctest --test-dir build --output-on-failure` | green | Passed 4 of 4 tests in 1.42s before M3 code changes. | Pass | M2 baseline green. |
-| BDD/REQ tests created | `tests/req/**` | fail for expected M2 no-namespace/unsupported incremental behavior before implementation | | | |
-| Implementation | namespace and incremental SAX files | contract satisfied | | | |
-| Formatter | `cmake --build build --target format` | clean or documented target absence | | | |
-| Typecheck / build check | `cmake --build build` | clean | | | |
-| Static analyzer / linter | `cmake --build build --target lint` | clean or documented target absence | | | |
-| Dependency audit | no new runtime deps | pass | | | |
-| Full tests | `ctest --test-dir build --output-on-failure` | green | | | |
-| Requirement tests | `ctest --test-dir build --output-on-failure -L req` | green | | | |
-| E2E runtime | `ctest --test-dir build --output-on-failure -L e2e` | green | | | |
-| Namespace verification | namespace tests | URIs/local/qname correct | | | |
-| Incremental verification | chunk-boundary tests | feed/finish behavior correct | | | |
-| Callback safety verification | throwing callback test | exception propagates and fresh parser works | | | |
-| Test artifact cleanup | `git status` | no generated artifact residue | | | |
-| Compatibility checks | include/link/install tests | no regressions | | | |
+| BDD/REQ tests created | `tests/req/**` | fail for expected M2 no-namespace/unsupported incremental behavior before implementation | Added M3 namespace, SAX, incremental, callback, and error tests; `ctest --test-dir build --output-on-failure -L req` failed 14 cases before implementation. | Pass | Failures were missing namespace URI/attribute filtering and unsupported incremental/callback adapter behavior. |
+| Implementation | namespace and incremental SAX files | contract satisfied | Added namespace stack/QName resolution and duplicate expanded attribute checks in `src/parser_core.cpp`; added `SaxCallbacks` and bounded incremental buffering in public SAX APIs. | Pass | Incremental `feed` reuses the M2 parser core on `finish()`. |
+| Formatter | `cmake --build build --target format` | clean or documented target absence | Passed; placeholder target reports no formatter configured in M1. | Pass | No semicolon regression in custom target text. |
+| Typecheck / build check | `cmake --build build` | clean | Passed after `cmake -S . -B build -DXMLPARSER_BUILD_TESTS=ON`. | Pass | Public headers and tests compile as C++17. |
+| Static analyzer / linter | `cmake --build build --target lint` | clean or documented target absence | Passed; placeholder target reports static analysis setup deferred. | Pass | Real lint tool remains deferred. |
+| Dependency audit | no new runtime deps | pass | `rg` review confirmed `xmlparser` still links only project sources and Catch2 remains the only test-only FetchContent dependency. | Pass | No runtime dependency added. |
+| Full tests | `ctest --test-dir build --output-on-failure` | green | Passed 4 of 4 tests in 1.53s. | Pass | BDD, req, conformance, and E2E entries all green. |
+| Requirement tests | `ctest --test-dir build --output-on-failure -L req` | green | Passed 2 of 2 labelled tests in 0.02s. | Pass | Includes `xmlparser_req` and `xmlparser_req_conformance`. |
+| E2E runtime | `ctest --test-dir build --output-on-failure -L e2e` | green | Passed 1 of 1 E2E test in 1.22s. | Pass | Run sequentially to avoid install-tree race. |
+| Namespace verification | namespace tests | URIs/local/qname correct | `REQ_STD_03_*` and `REQ_SAX_05_*` namespace tests passed. | Pass | Default namespace, prefixed nested scopes, undeclaration, attribute names, and duplicate expanded attribute rejection covered. |
+| Incremental verification | chunk-boundary tests | feed/finish behavior correct | `REQ_SAX_04_*` tests passed for one-byte chunks, markup splits, UTF-8 multibyte split, and truncated finish. | Pass | Buffer is bounded by `max_document_bytes`. |
+| Callback safety verification | throwing callback test | exception propagates and fresh parser works | `REQ_ERR_05_callback_throw_does_not_leak` passed. | Pass | Fresh parser use succeeds after callback exception. |
+| Test artifact cleanup | `git status` | no generated artifact residue | `git status --short --branch` shows only intentional source/docs changes; `find` found no coverage/core artifacts; `build/` remains ignored. | Pass | `git check-ignore -v build build/CMakeCache.txt build/_deps` confirmed ignore coverage. |
+| Compatibility checks | include/link/install tests | no regressions | M1/M2 BDD, requirement, conformance, and install-tree E2E tests passed. | Pass | One-shot parse behavior remains stable. |
 
 #### Definition Of Done
 

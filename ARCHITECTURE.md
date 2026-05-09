@@ -73,6 +73,15 @@ length, attribute count, and entity expansion limits. Namespace resolution,
 incremental chunk carryover, final DOM ownership, serializer behavior, XML 1.1,
 DTD validation, and external resolver behavior remain planned components.
 
+Milestone 3 extends the same parser core with namespace scope resolution and a
+buffered incremental SAX facade. `SaxParser::feed` accumulates caller chunks up
+to `ParserOptions::max_document_bytes`, and `finish()` hands the complete buffer
+to the shared parser core, preserving the M2 tokenizer/decoder behavior across
+one-shot and incremental APIs. Namespace declarations are scoped with the
+element stack, are not emitted as ordinary attributes, and event `QualifiedName`
+values include URI, local name, and qname. Duplicate expanded attribute names
+are rejected during start-tag processing.
+
 ## Data Flow Summary
 
 | Flow | From | To | Mechanism | Bounded? | Failure Mode | Milestone |
